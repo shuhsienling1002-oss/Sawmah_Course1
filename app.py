@@ -71,7 +71,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 ---
+# --- 3. 核心技術：沙盒渲染引擎 (修復版) ---
 def get_html_card(item, type="word"):
     style_block = """<style>
         body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 10px; padding-top: 40px; overflow: hidden; }
@@ -100,17 +100,45 @@ def get_html_card(item, type="word"):
                 <div class="wc-amis">{v['emoji']} {v['amis']}</div>
                 <div class="wc-zh">{v['zh']}</div>
             </div>
-            <button class="play-btn" onclick="speak('{v['amis']}')">🔊</button>
+            <button class="play-btn" onclick="speak('{v['amis'].replace("'", "\\'")}')">🔊</button>
         </div>"""
+        
     elif type == "sentence":
         s = item
-        parts = [f'<span class="interactive-word" onclick="speak(\'{re.sub(r"[^\\w\']", "", w).lower()}\')">{w}<span class="tooltip-text">{VOCAB_MAP.get(re.sub(r"[^\\w\']", "", w).lower(), "")}</span></span>' for w in s['amis'].split()]
+        words = s['amis'].split()
+        parts = []
+        for w in words:
+            clean_word = re.sub(r"[^\w']", "", w).lower()
+            translation = VOCAB_MAP.get(clean_word, "")
+            # 關鍵修復：單引號轉義，防止 JS 報錯
+            js_word = clean_word.replace("'", "\\'")
+            
+            # 關鍵修復：只有在有翻譯時才添加 tooltip-text
+            if translation:
+                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
+            else:
+                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
+            parts.append(chunk)
+            
         body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button class="full-play-btn" onclick="speak(`{s["amis"]}`)">▶ 播放完整句子</button>'
+        
     elif type == "story":
         parts = []
         for line in item.split('\n'):
-            line_parts = [f'<span class="interactive-word" onclick="speak(\'{re.sub(r"[^\\w\']", "", w).lower()}\')">{w}<span class="tooltip-text">{VOCAB_MAP.get(re.sub(r"[^\\w\']", "", w).lower(), "")}</span></span>' for w in line.split()]
+            line_words = line.split()
+            line_parts = []
+            for w in line_words:
+                clean_word = re.sub(r"[^\w']", "", w).lower()
+                translation = VOCAB_MAP.get(clean_word, "")
+                js_word = clean_word.replace("'", "\\'")
+                
+                if translation:
+                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
+                else:
+                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
+                line_parts.append(chunk)
             parts.append(" ".join(line_parts) + "<br>")
+            
         body = f'<div style="font-size: 20px; line-height: 2.2;">{" ".join(parts)}</div>'
 
     return header + body + "</body></html>"
@@ -228,7 +256,6 @@ with tab3:
         st.markdown(f"""<div style="color:#FFF; margin-bottom:8px;">{s['zh']}</div><div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron;">NOTE:</span> {s.get('note', '')}</div></div>""", unsafe_allow_html=True)
 
 with tab4:
-    # 初始化測驗
     if 'quiz_questions' not in st.session_state:
         st.session_state.quiz_questions = generate_quiz()
         st.session_state.quiz_step = 0
@@ -237,7 +264,6 @@ with tab4:
     if st.session_state.quiz_step < len(st.session_state.quiz_questions):
         q = st.session_state.quiz_questions[st.session_state.quiz_step]
         
-        # 顯示題目
         st.markdown(f"""
         <div class="quiz-card">
             <div style="margin-bottom:10px;"><span class="quiz-tag">{q['tag']}</span> <span style="color:#888;">Q{st.session_state.quiz_step + 1}</span></div>
@@ -245,11 +271,9 @@ with tab4:
         </div>
         """, unsafe_allow_html=True)
         
-        # 播放音檔
         if 'audio' in q:
             play_audio(q['audio'])
 
-        # 選項渲染 (關鍵修復：這裡不執行 random.shuffle)
         opts = q['options']
         
         cols = st.columns(3)
@@ -257,7 +281,6 @@ with tab4:
             col_idx = i % 3
             with cols[col_idx]:
                 if st.button(opt, key=f"q_{st.session_state.quiz_step}_{i}"):
-                    # 答案比對 (忽略大小寫)
                     if opt.lower() == q['correct'].lower() or opt == q['correct']:
                         st.success("通過 (Access Granted)")
                         st.session_state.quiz_score += 1
@@ -276,4 +299,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.4 | Quantum Shuffle Bug Fixed | Logic Stabilized")
+st.caption("SYSTEM VER 7.5 | Interaction Engine Restored | JS Escaping Fixed")
