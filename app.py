@@ -224,7 +224,7 @@ with tab2:
         components.html(get_html_card(v, type="word"), height=140)
 
 with tab3:
-    st.markdown("### // 語法解碼：句型結構")
+    st.markdown("### // 句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
         components.html(get_html_card(s, type="sentence"), height=140)
@@ -259,6 +259,7 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
+
 
 
 
