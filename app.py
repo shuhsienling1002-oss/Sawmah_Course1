@@ -31,7 +31,6 @@ VOCABULARY = [
     {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
 ]
 
-# 修正：更新為您提供的詳細語法分析版
 SENTENCES = [
     {
         "amis": "Ina, ira to kako a minokay.", 
@@ -62,14 +61,15 @@ SENTENCES = [
     }
 ]
 
-# 課文對話
+# 課文數據
 STORY_DATA = [
-    {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。"},
-    {"amis": "A! Ira to kiso a minokay!", "zh": "阿！你回來了！"},
-    {"amis": "Macahiw kako.", "zh": "我肚子餓了。"},
-    {"amis": "O maan ko kaolahan iso?", "zh": "你想要吃什麼？"},
-    {"amis": "Mangalay kako a komaen to konga.", "zh": "我想要吃地瓜。"},
-    {"amis": "Hay, ira i parad ko konga, alaen.", "zh": "好，地瓜在桌子上，去拿吧。"}
+    {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
+    {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
+    {"amis": "Caay ka pahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
+    {"amis": "Ma'araw nangra ko matefaday a posak i lalan.", "zh": "牠們看見了掉在路上的飯粒。"},
+    {"amis": "Liliden nangra kora posak a panokay.", "zh": "牠們便將那飯粒搬運回家。"},
+    {"amis": "Mafana' a mapapadang ko kakonah.", "zh": "螞蟻懂得互相幫助。"},
+    {"amis": "Saka, matatodong a minanam kita to lalok no kakonah.", "zh": "所以，我們值得學習螞蟻的勤勞。"}
 ]
 
 # --- 2. 視覺系統 (CSS 注入) ---
@@ -87,11 +87,12 @@ st.markdown("""
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
     
+    /* 中文翻譯區塊樣式 */
     .zh-translation-block {
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
         padding: 20px;
-        margin-top: 20px;
+        margin-top: 5px; /* 修正：縮小上方間距 */
         border-radius: 5px;
         color: #CCC;
         font-size: 16px;
@@ -100,10 +101,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.2) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.4) ---
 def get_html_card(item, type="word"):
+    # 修正：padding-top 縮減至 60px，並在下方阿美語區塊將 margin-top 拉回
     style_block = """<style>
-        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 100px; overflow-x: hidden; }
+        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 60px; overflow-x: hidden; }
+        
         .interactive-word { position: relative; display: inline-block; border-bottom: 1px dashed #39FF14; cursor: pointer; margin: 0 3px; color: #EEE; transition: 0.3s; font-size: 19px; }
         .interactive-word .tooltip-text { visibility: hidden; min-width: 60px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; }
         .interactive-word:hover .tooltip-text { visibility: visible; opacity: 1; }
@@ -111,13 +114,15 @@ def get_html_card(item, type="word"):
         .play-btn-inline { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }
         .play-btn-inline:hover { background: #39FF14; color: #000; transform: scale(1.1); }
         
-        .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -70px; height: 100px; box-sizing: border-box; }
+        /* 單字卡樣式 */
+        .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -30px; height: 100px; box-sizing: border-box; }
         .wc-root-tag { font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         .wc-amis { color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }
         .wc-zh { color: #FFF; font-size: 16px; font-weight: bold; }
         .play-btn-large { background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }
         
-        .amis-full-block { line-height: 2.2; font-size: 18px; margin-top: -30px; }
+        /* 阿美語全文區塊樣式 */
+        .amis-full-block { line-height: 2.2; font-size: 18px; margin-top: -40px; } /* 修正：使用負邊距抵消部分 padding */
         .sentence-row { margin-bottom: 12px; display: block; }
     </style>
     <script>
@@ -209,7 +214,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako a minokay</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -217,8 +222,9 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
+    # 修正：高度從 550 縮減至 380，消除黑色空隙
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
-    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=550, scrolling=True)
+    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=380, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
@@ -267,5 +273,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.3 | Grammar Analysis Module Updated")
-
+st.caption("SYSTEM VER 8.4 | Layout Fixed: Gap Reduced (380px Height)")
