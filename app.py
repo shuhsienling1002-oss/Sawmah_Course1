@@ -13,23 +13,14 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 1. 資料庫 (第 1 課：Ira to kako a minokay) ---
-# 關鍵修復：擴充字典，確保課文中每一個字都能查到翻譯
+# --- 1. 資料庫 (更新為：Ira to kako a minokay) ---
+# 擴充字典以支援新課文的 Tooltip
 VOCAB_MAP = {
     "ina": "媽媽", "ira": "有/在/到達", "to": "了(完成貌)", "kako": "我", "a": "連綴詞",
     "minokay": "回家", "kiso": "你", "macahiw": "肚子餓", "o": "是/主格",
     "maan": "什麼", "ko": "主格標記", "kaolahan": "喜歡的/想要的", "iso": "你的",
     "mangalay": "想要", "komaen": "吃", "konga": "地瓜", "hay": "好/是的",
-    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)",
-    "tada": "非常/真正", "malalokay": "勤勞的", "fao": "昆蟲",
-    "ano": "當...時", "matayal": "工作", "cangra": "他們", "saheto": "全部/都",
-    "foloday": "一群的/同伴", "masadak": "出來", "caay": "不", "ka": "否定連接",
-    "pahanhan": "休息", "tayal": "工作", "nangra": "他們的", 
-    "ma'araw": "看見", "matefaday": "掉下來的", "posak": "飯粒", "lalan": "路",
-    "liliden": "搬運", "kora": "那個", "panokay": "帶回家",
-    "mafana'": "懂得/會", "mapapadang": "互相幫忙", "saka": "所以",
-    "matatodong": "值得/剛好", "minanam": "學習", "kita": "我們(包含)", "lalok": "勤勞",
-    "no": "的(屬格)"
+    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)"
 }
 
 VOCABULARY = [
@@ -41,6 +32,7 @@ VOCABULARY = [
     {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
 ]
 
+# 這裡填入您要求的詳細語法分析
 SENTENCES = [
     {
         "amis": "Ina, ira to kako a minokay.", 
@@ -71,15 +63,14 @@ SENTENCES = [
     }
 ]
 
-# 課文數據 (修正版：7句獨立)
+# 課文數據 (更新為：我回來了)
 STORY_DATA = [
-    {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
-    {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
-    {"amis": "Caay ka pahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
-    {"amis": "Ma'araw nangra ko matefaday a posak i lalan.", "zh": "牠們看見了掉在路上的飯粒。"},
-    {"amis": "Liliden nangra kora posak a panokay.", "zh": "牠們便將那飯粒搬運回家。"},
-    {"amis": "Mafana' a mapapadang ko kakonah.", "zh": "螞蟻懂得互相幫助。"},
-    {"amis": "Saka, matatodong a minanam kita to lalok no kakonah.", "zh": "所以，我們值得學習螞蟻的勤勞。"}
+    {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。"},
+    {"amis": "A! Ira to kiso a minokay!", "zh": "阿！你回來了！"},
+    {"amis": "Macahiw kako.", "zh": "我肚子餓了。"},
+    {"amis": "O maan ko kaolahan iso?", "zh": "你想要吃什麼？"},
+    {"amis": "Mangalay kako a komaen to konga.", "zh": "我想要吃地瓜。"},
+    {"amis": "Hay, ira i parad ko konga, alaen.", "zh": "好，地瓜在桌子上，去拿吧。"}
 ]
 
 # --- 2. 視覺系統 (CSS 注入) ---
@@ -113,7 +104,7 @@ st.markdown("""
 
 # --- 3. 核心技術：沙盒渲染引擎 (v8.6) ---
 def get_html_card(item, type="word"):
-    # 設置動態 padding
+    # 設定：full_amis_block 依然保持 110px padding (防切頭)
     pt = "110px" if type == "full_amis_block" else "60px"
     mt = "-60px" if type == "full_amis_block" else "-30px" 
 
@@ -157,7 +148,7 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
-        # 關鍵修復：這裡確保每個單字都生成 interactive-word span
+        # 互動課文區塊
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -168,7 +159,6 @@ def get_html_card(item, type="word"):
                 translation = VOCAB_MAP.get(clean_word, "")
                 js_word = clean_word.replace("'", "\\'") 
                 
-                # 無論有無翻譯，都生成 span 以支援點擊發音；有翻譯則加 Tooltip
                 if translation:
                     chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
                 else:
@@ -187,7 +177,7 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
-        # 關鍵修復：Tab 3 的互動邏輯也一併恢復
+        # 句型解析區塊
         s = item
         words = s['amis'].split()
         parts = []
@@ -230,7 +220,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：螞蟻 (新版)</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -238,12 +228,10 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
-    # 區塊 1: 阿美語全文 (互動式) - 高度 580px
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
     components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=580, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 區塊 2: 中文全文 (靜態文字)
     zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
     st.markdown(f"""
     <div class="zh-translation-block">
@@ -260,9 +248,7 @@ with tab3:
     st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
-        # 恢復互動卡片
         components.html(get_html_card(s, type="sentence"), height=140)
-        # 恢復中文翻譯與解析
         st.markdown(f"""
         <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
         <div style="color:#CCC; font-size:14px; line-height:1.8; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron; font-weight:bold;">ANALYSIS:</span> {s.get('note', '')}</div>
@@ -292,4 +278,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.6 | Full Restoration | Functionality Online")
+st.caption("SYSTEM VER 8.7 | Content Swapped to 'Ira to kako' | Layout Preserved")
