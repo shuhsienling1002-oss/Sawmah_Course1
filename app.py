@@ -98,9 +98,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.8) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v9.0) ---
 def get_html_card(item, type="word"):
-    # 設定：full_amis_block 依然保持 100px padding (防切頭)
+    # 設定：full_amis_block 依然保持 100px padding (防切頭)，下方負邊距拉近
     pt = "100px" if type == "full_amis_block" else "80px"
     mt = "-40px" if type == "full_amis_block" else "-30px" 
 
@@ -144,6 +144,7 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
+        # 互動課文區塊：產生帶發音與翻譯的單字 Span
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -172,6 +173,7 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
+        # 句型解析區塊
         s = item
         words = s['amis'].split()
         parts = []
@@ -191,63 +193,84 @@ def get_html_card(item, type="word"):
 
     return header + body + "</body></html>"
 
-# --- 4. 測驗生成引擎 (升級版) ---
+# --- 4. 測驗生成引擎 (Logic Hardened) ---
 def generate_quiz():
     questions = []
     
-    # 1. 聽音辨義 (Listen -> Word)
+    # 1. 聽音辨義
     q1 = random.choice(VOCABULARY)
     q1_opts = [q1['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q1], 2)]
     random.shuffle(q1_opts)
     questions.append({"type": "listen", "tag": "🎧 聽音辨義", "text": "請聽語音，選擇正確的單字", "audio": q1['amis'], "correct": q1['amis'], "options": q1_opts})
     
-    # 2. 中翻阿 (ZH -> Amis Word)
+    # 2. 中翻阿
     q2 = random.choice(VOCABULARY)
     q2_opts = [q2['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q2], 2)]
     random.shuffle(q2_opts)
     questions.append({"type": "trans", "tag": "🧩 中翻阿", "text": f"請選擇「<span style='color:#39FF14'>{q2['zh']}</span>」的阿美語", "correct": q2['amis'], "options": q2_opts})
     
-    # 3. 阿翻中 (Amis -> ZH Word)
+    # 3. 阿翻中
     q3 = random.choice(VOCABULARY)
     q3_opts = [q3['zh']] + [v['zh'] for v in random.sample([x for x in VOCABULARY if x != q3], 2)]
     random.shuffle(q3_opts)
     questions.append({"type": "trans_a2z", "tag": "🔄 阿翻中", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的意思是？", "correct": q3['zh'], "options": q3_opts})
 
-    # 4. 詞根偵探 (Root)
+    # 4. 詞根偵探
     q4 = random.choice(VOCABULARY)
     other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q4['root']]))
-    q4_opts = [q4['root']] + random.sample(other_roots, min(len(other_roots), 2))
+    # 安全檢查：如果詞根不夠，補一些假詞根
+    if len(other_roots) < 2: other_roots += ["roma", "lalan", "cidal"]
+    q4_opts = [q4['root']] + random.sample(other_roots, 2)
     random.shuffle(q4_opts)
     questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q4['amis']}</span> 的詞根是？", "correct": q4['root'], "options": q4_opts, "note": f"詞根意思：{q4['root_zh']}"})
     
-    # 5. 語感聽解 (Listen -> ZH Sentence)
+    # 5. 語感聽解
     q5 = random.choice(STORY_DATA)
     questions.append({"type": "listen_sent", "tag": "🔊 語感聽解", "text": "請聽句子，選擇正確的中文翻譯", "audio": q5['amis'], "correct": q5['zh'], "options": [q5['zh']] + [s['zh'] for s in random.sample([x for x in STORY_DATA if x != q5], 2)]})
 
-    # 6. 句型翻譯 (ZH -> Amis Sentence)
+    # 6. 句型翻譯
     q6 = random.choice(STORY_DATA)
     q6_opts = [q6['amis']] + [s['amis'] for s in random.sample([x for x in STORY_DATA if x != q6], 2)]
     random.shuffle(q6_opts)
     questions.append({"type": "sent_trans", "tag": "📝 句型翻譯", "text": f"請選擇中文「<span style='color:#39FF14'>{q6['zh']}</span>」對應的阿美語", "correct": q6['amis'], "options": q6_opts})
 
-    # 7. 克漏字 (Cloze)
+    # 7. 克漏字 (修正：精準挖空邏輯)
     q7 = random.choice(STORY_DATA)
-    # 找一個單字挖空 (必須在 VOCAB_MAP 中有定義)
     words = q7['amis'].split()
-    candidates = [w for w in words if re.sub(r"[^\w']", "", w).lower() in VOCAB_MAP]
-    if candidates:
-        target = random.choice(candidates)
-        clean_target = re.sub(r"[^\w']", "", target).lower()
-        q_text = q7['amis'].replace(target, "______")
-        # 選項
-        opts = [target]
-        others = [k for k in VOCAB_MAP.keys() if k != clean_target]
-        opts += random.sample(others, 2)
-        random.shuffle(opts)
-        questions.append({"type": "cloze", "tag": "🕳️ 文法克漏字", "text": f"請填空：<br><span style='color:#FFF; font-size:18px;'>{q_text}</span><br><span style='color:#BBB; font-size:14px;'>{q7['zh']}</span>", "correct": target, "options": opts})
+    # 找出所有在字典裡的字 (忽略標點)
+    valid_indices = []
+    for i, w in enumerate(words):
+        clean_w = re.sub(r"[^\w']", "", w).lower()
+        if clean_w in VOCAB_MAP:
+            valid_indices.append(i)
     
-    # 補足第 8 題 (隨機一題)
-    questions.append(random.choice(questions[:3])) # 隨機重出一題簡單的作為獎勵
+    if valid_indices:
+        target_idx = random.choice(valid_indices)
+        target_raw = words[target_idx] # 例如 "Ina,"
+        target_clean = re.sub(r"[^\w']", "", target_raw).lower() # "ina"
+        
+        # 顯示題目：把那個字挖掉
+        words_display = words[:]
+        words_display[target_idx] = "______"
+        q_text = " ".join(words_display)
+        
+        # 選項：必須是乾淨的單字，不帶標點
+        correct_ans = target_clean # 正確答案存為 "ina" (乾淨版)
+        
+        # 干擾項
+        distractors = [k for k in VOCAB_MAP.keys() if k != correct_ans]
+        if len(distractors) < 2: distractors += ["kako", "ira"] # Fallback
+        opts = [correct_ans] + random.sample(distractors, 2)
+        random.shuffle(opts)
+        
+        questions.append({"type": "cloze", "tag": "🕳️ 文法克漏字", "text": f"請填空：<br><span style='color:#FFF; font-size:18px;'>{q_text}</span><br><span style='color:#BBB; font-size:14px;'>{q7['zh']}</span>", "correct": correct_ans, "options": opts})
+    
+    else:
+        # 如果句子太短沒字可挖，回退到聽力題
+        questions.append(questions[0]) 
+
+    # 8. 補一題 (隨機)
+    questions.append(random.choice(questions[:4])) 
 
     random.shuffle(questions)
     return questions
@@ -305,6 +328,7 @@ with tab4:
         for i, opt in enumerate(opts):
             with cols[i % 3]:
                 if st.button(opt, key=f"q_{st.session_state.quiz_step}_{i}"):
+                    # 判斷邏輯：統一轉小寫比對 (避免 Ina vs ina 問題)
                     if opt.lower() == q['correct'].lower():
                         st.success("通過 (Access Granted)"); st.session_state.quiz_score += 1
                     else:
@@ -316,4 +340,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.9 | Quiz Engine Upgraded (7 Types / 8 Questions) | Layout Stable")
+st.caption("SYSTEM VER 9.0 | Quiz Logic Hardened | No More Broken Clozes")
