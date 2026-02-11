@@ -15,10 +15,10 @@ st.set_page_config(
 
 # --- 1. 資料庫 (第 1 課：O kakonah) ---
 VOCAB_MAP = {
-    "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/主格",
-    "tada": "非常", "malalokay": "勤勞的", "a": "的/連詞", "fao": "昆蟲",
+    "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/述格",
+    "tada": "非常", "malalokay": "勤勞的", "a": "連接詞", "fao": "昆蟲",
     "ano": "當/若", "matayal": "工作", "cangra": "他們", "saheto": "全部",
-    "foloday": "一群的", "masadak": "出來", "caay": "不", "ka": "(否定)",
+    "foloday": "一群的", "masadak": "出來", "caay": "不", "ka": "否定綴詞",
     "pahanhan": "休息", "ko": "主格", "tayal": "工作", "nangra": "他們的",
     "ma'araw": "看見", "matefaday": "掉下的", "posak": "飯粒", "lalan": "路",
     "liliden": "搬運(被)", "kora": "那個", "panokay": "帶回家", "mafana'": "懂得",
@@ -259,5 +259,6 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
+
 
 
