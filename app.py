@@ -202,7 +202,7 @@ st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 with tab1:
-    st.markdown("### // 沉浸模式 (Interactive Immersion)")
+    st.markdown("### // 請閱讀文章")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
     # 區塊 1: 阿美語全文 (互動式) - 增加高度適應 padding
@@ -259,4 +259,5 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
+
 
