@@ -89,7 +89,7 @@ st.markdown("""
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
         padding: 20px;
-        margin-top: 0px; /* 修正：移除頂部間距，緊貼上方組件 */
+        margin-top: 0px; 
         border-radius: 5px;
         color: #CCC;
         font-size: 16px;
@@ -100,22 +100,9 @@ st.markdown("""
 
 # --- 3. 核心技術：沙盒渲染引擎 (v8.8) ---
 def get_html_card(item, type="word"):
-    # --- 關鍵修正區：高度與間距的黃金比例 ---
-    
-    # 1. 課文區 (full_amis_block): 
-    #    Padding-top: 100px (保證 Tooltip 向上彈出不被切)
-    #    Margin-top: -40px (視覺上把文字拉高，不留黑邊)
-    
-    # 2. 句型區 (sentence):
-    #    Padding-top: 80px (給單行句子的 Tooltip 足夠空間，解決「太近被遮」問題)
-    #    Margin-top: -30px (平衡位置)
-    
-    if type == "full_amis_block":
-        pt, mt = "100px", "-40px"
-    elif type == "sentence":
-        pt, mt = "80px", "-30px"
-    else: # word
-        pt, mt = "80px", "-40px"
+    # 設定：full_amis_block 依然保持 100px padding (防切頭)
+    pt = "100px" if type == "full_amis_block" else "80px"
+    mt = "-40px" if type == "full_amis_block" else "-30px" 
 
     style_block = f"""<style>
         body {{ background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: {pt}; overflow-x: hidden; }}
@@ -204,22 +191,66 @@ def get_html_card(item, type="word"):
 
     return header + body + "</body></html>"
 
-# --- 4. 測驗生成引擎 ---
+# --- 4. 測驗生成引擎 (升級版) ---
 def generate_quiz():
     questions = []
-    q1 = random.choice(VOCABULARY); q1_opts = [q1['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q1], 2)]; random.shuffle(q1_opts)
+    
+    # 1. 聽音辨義 (Listen -> Word)
+    q1 = random.choice(VOCABULARY)
+    q1_opts = [q1['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q1], 2)]
+    random.shuffle(q1_opts)
     questions.append({"type": "listen", "tag": "🎧 聽音辨義", "text": "請聽語音，選擇正確的單字", "audio": q1['amis'], "correct": q1['amis'], "options": q1_opts})
     
-    q2 = random.choice(VOCABULARY); q2_opts = [q2['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q2], 2)]; random.shuffle(q2_opts)
-    questions.append({"type": "trans", "tag": "🧩 詞義連結", "text": f"請選擇「<span style='color:#39FF14'>{q2['zh']}</span>」的阿美語", "correct": q2['amis'], "options": q2_opts})
+    # 2. 中翻阿 (ZH -> Amis Word)
+    q2 = random.choice(VOCABULARY)
+    q2_opts = [q2['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q2], 2)]
+    random.shuffle(q2_opts)
+    questions.append({"type": "trans", "tag": "🧩 中翻阿", "text": f"請選擇「<span style='color:#39FF14'>{q2['zh']}</span>」的阿美語", "correct": q2['amis'], "options": q2_opts})
     
-    q3 = random.choice([v for v in VOCABULARY if v['root'] != v['amis']] or VOCABULARY); other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q3['root']])); q3_opts = [q3['root']] + random.sample(other_roots, min(len(other_roots), 2)); random.shuffle(q3_opts)
-    questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的詞根是？", "correct": q3['root'], "options": q3_opts, "note": f"詞根意思：{q3['root_zh']}"})
+    # 3. 阿翻中 (Amis -> ZH Word)
+    q3 = random.choice(VOCABULARY)
+    q3_opts = [q3['zh']] + [v['zh'] for v in random.sample([x for x in VOCABULARY if x != q3], 2)]
+    random.shuffle(q3_opts)
+    questions.append({"type": "trans_a2z", "tag": "🔄 阿翻中", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的意思是？", "correct": q3['zh'], "options": q3_opts})
+
+    # 4. 詞根偵探 (Root)
+    q4 = random.choice(VOCABULARY)
+    other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q4['root']]))
+    q4_opts = [q4['root']] + random.sample(other_roots, min(len(other_roots), 2))
+    random.shuffle(q4_opts)
+    questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q4['amis']}</span> 的詞根是？", "correct": q4['root'], "options": q4_opts, "note": f"詞根意思：{q4['root_zh']}"})
     
-    q4 = random.choice(SENTENCES)
-    questions.append({"type": "listen_sent", "tag": "🔊 語感聽解", "text": "請聽句子，選擇正確的中文", "audio": q4['amis'], "correct": q4['zh'], "options": [q4['zh']] + [s['zh'] for s in random.sample([x for x in SENTENCES if x != q4], 2)]})
+    # 5. 語感聽解 (Listen -> ZH Sentence)
+    q5 = random.choice(STORY_DATA)
+    questions.append({"type": "listen_sent", "tag": "🔊 語感聽解", "text": "請聽句子，選擇正確的中文翻譯", "audio": q5['amis'], "correct": q5['zh'], "options": [q5['zh']] + [s['zh'] for s in random.sample([x for x in STORY_DATA if x != q5], 2)]})
+
+    # 6. 句型翻譯 (ZH -> Amis Sentence)
+    q6 = random.choice(STORY_DATA)
+    q6_opts = [q6['amis']] + [s['amis'] for s in random.sample([x for x in STORY_DATA if x != q6], 2)]
+    random.shuffle(q6_opts)
+    questions.append({"type": "sent_trans", "tag": "📝 句型翻譯", "text": f"請選擇中文「<span style='color:#39FF14'>{q6['zh']}</span>」對應的阿美語", "correct": q6['amis'], "options": q6_opts})
+
+    # 7. 克漏字 (Cloze)
+    q7 = random.choice(STORY_DATA)
+    # 找一個單字挖空 (必須在 VOCAB_MAP 中有定義)
+    words = q7['amis'].split()
+    candidates = [w for w in words if re.sub(r"[^\w']", "", w).lower() in VOCAB_MAP]
+    if candidates:
+        target = random.choice(candidates)
+        clean_target = re.sub(r"[^\w']", "", target).lower()
+        q_text = q7['amis'].replace(target, "______")
+        # 選項
+        opts = [target]
+        others = [k for k in VOCAB_MAP.keys() if k != clean_target]
+        opts += random.sample(others, 2)
+        random.shuffle(opts)
+        questions.append({"type": "cloze", "tag": "🕳️ 文法克漏字", "text": f"請填空：<br><span style='color:#FFF; font-size:18px;'>{q_text}</span><br><span style='color:#BBB; font-size:14px;'>{q7['zh']}</span>", "correct": target, "options": opts})
+    
+    # 補足第 8 題 (隨機一題)
+    questions.append(random.choice(questions[:3])) # 隨機重出一題簡單的作為獎勵
+
     random.shuffle(questions)
-    return questions[:4]
+    return questions
 
 def play_audio_backend(text):
     try:
@@ -227,7 +258,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako a minokay</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -235,13 +266,10 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
-    # 區塊 1: 阿美語全文
-    # 修正：高度設為 400px (緊湊化)，消滅下方大量空白
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
     components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 區塊 2: 中文全文
     zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
     st.markdown(f"""
     <div class="zh-translation-block">
@@ -258,7 +286,6 @@ with tab3:
     st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
-        # 修正：高度增加至 160px，解決「太近被遮到」的問題
         components.html(get_html_card(s, type="sentence"), height=160)
         st.markdown(f"""
         <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
@@ -289,6 +316,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("協作單位：桃園市阿美族三一教育文化協會")
-
-
+st.caption("SYSTEM VER 8.9 | Quiz Engine Upgraded (7 Types / 8 Questions) | Layout Stable")
