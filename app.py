@@ -5,7 +5,6 @@ import random
 import re
 from gtts import gTTS
 from io import BytesIO
-import base64
 
 # --- 0. 系統配置 ---
 st.set_page_config(
@@ -14,20 +13,23 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS & JS 視覺魔法 (賽博龐克 + 互動引擎) ---
+# --- JavaScript: 瀏覽器原生發音引擎 (零延遲) ---
+# 使用印尼語 (id-ID) 作為阿美語的發音近似替代
 st.markdown("""
     <script>
         function speak(text) {
-            // 使用瀏覽器原生 TTS，設置為印尼語 (id-ID) 作為阿美語近似音
-            // 這是純前端方案，零延遲
             var msg = new SpeechSynthesisUtterance();
             msg.text = text;
             msg.lang = 'id-ID'; 
-            msg.rate = 0.9; // 稍微放慢語速
-            window.speechSynthesis.cancel(); // 切斷上一句
+            msg.rate = 0.9; 
+            window.speechSynthesis.cancel();
             window.speechSynthesis.speak(msg);
         }
     </script>
+""", unsafe_allow_html=True)
+
+# --- CSS: 賽博龐克視覺 + 互動元件樣式 ---
+st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
 
@@ -59,76 +61,69 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* --- Tabs 修正 --- */
+    /* --- Tabs 樣式修正 (深色模式適配) --- */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         background-color: rgba(255, 255, 255, 0.05);
-        color: #FFFFFF !important;
+        color: #FFFFFF !important; /* 強制純白文字 */
         border-radius: 5px 5px 0 0;
+        border: 1px solid transparent;
     }
     .stTabs [aria-selected="true"] {
         background-color: rgba(57, 255, 20, 0.1) !important;
         border: 1px solid #39FF14;
         border-bottom: none;
-        color: #39FF14 !important;
+        color: #39FF14 !important; /* 選中變綠 */
+        font-weight: bold;
         box-shadow: 0 -5px 10px rgba(57, 255, 20, 0.1);
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #39FF14 !important;
+        background-color: rgba(57, 255, 20, 0.2);
     }
 
     /* --- 互動式文字 (Interactive Text) --- */
     .interactive-word {
         position: relative;
         display: inline-block;
-        border-bottom: 1px dashed #39FF14; /* 下劃線提示可互動 */
+        border-bottom: 1px dashed #39FF14; /* 下劃線 */
         cursor: pointer;
         margin: 0 4px;
         transition: 0.3s;
     }
-    
     .interactive-word:hover {
         background-color: rgba(57, 255, 20, 0.2);
         color: #FFF;
         text-shadow: 0 0 5px #39FF14;
     }
 
-    /* Tooltip 本體 */
+    /* Tooltip (懸停提示框) */
     .interactive-word .tooltip-text {
         visibility: hidden;
-        width: 80px;
+        min-width: 60px;
         background-color: #000;
         color: #39FF14;
         text-align: center;
         border: 1px solid #39FF14;
         border-radius: 6px;
-        padding: 5px 0;
+        padding: 5px 8px;
         position: absolute;
-        z-index: 1;
-        bottom: 125%; /* 顯示在上方 */
+        z-index: 10;
+        bottom: 125%;
         left: 50%;
-        margin-left: -40px;
+        transform: translateX(-50%);
         opacity: 0;
         transition: opacity 0.3s;
         font-size: 14px;
         box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+        white-space: nowrap;
     }
-
     .interactive-word:hover .tooltip-text {
         visibility: visible;
         opacity: 1;
     }
-    
-    /* 箭頭 */
-    .interactive-word .tooltip-text::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        margin-left: -5px;
-        border-width: 5px;
-        border-style: solid;
-        border-color: #39FF14 transparent transparent transparent;
-    }
 
-    /* 卡片與按鈕樣式保持不變 */
+    /* 卡片樣式 */
     .word-card {
         background: rgba(20, 30, 20, 0.9);
         border: 1px solid #39FF14;
@@ -137,6 +132,19 @@ st.markdown("""
         border-radius: 5px;
         margin-bottom: 10px;
     }
+    .amis-text { color: #39FF14; font-size: 20px; font-weight: bold; }
+    .zh-text { color: #BBBBBB; font-size: 16px; margin-top: 5px; }
+    .root-tag { 
+        font-size: 12px; 
+        color: #000; 
+        background: #39FF14; 
+        padding: 2px 6px; 
+        border-radius: 3px;
+        font-weight: bold;
+        float: right;
+    }
+
+    /* 按鈕樣式 */
     .stButton>button {
         border: 1px solid #39FF14 !important;
         background: transparent !important;
@@ -151,46 +159,21 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. 資料庫 ---
-# 為了讓 Tooltip 抓到對應中文，這裡建立一個快速查找字典
+# --- 1. 資料庫 (Vocabulary & Sentences) ---
+# Tooltip 字典
 VOCAB_MAP = {
-    "kakonah": "螞蟻",
-    "hananay": "所謂的",
-    "i": "(語氣詞)",
-    "o": "是/主格",
-    "tada": "非常",
-    "malalokay": "勤勞的",
-    "a": "的/連詞",
-    "fao": "昆蟲",
-    "ano": "當/若",
-    "matayal": "工作(主焦)",
-    "cangra": "他們",
-    "saheto": "全部/都",
-    "foloday": "一群的",
-    "masadak": "出來",
-    "caay": "不",
-    "ka": "(否定連接)",
-    "pahanhan": "休息",
-    "ko": "主格標記",
-    "tayal": "工作",
-    "nangra": "他們的",
-    "ma'araw": "看見",
-    "matefaday": "掉下來的",
-    "posak": "飯粒",
-    "lalan": "路",
-    "liliden": "搬運(處置)",
-    "kora": "那個",
-    "panokay": "帶回家",
-    "mafana'": "懂得/會",
-    "mapapadang": "互相幫忙",
-    "saka": "所以",
-    "matatodong": "值得/剛好",
-    "minanam": "學習",
-    "kita": "我們(包含)",
-    "to": "受格標記",
-    "lalok": "勤勞(名詞)"
+    "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/主格",
+    "tada": "非常", "malalokay": "勤勞的", "a": "的/連詞", "fao": "昆蟲",
+    "ano": "當/若", "matayal": "工作", "cangra": "他們", "saheto": "全部",
+    "foloday": "一群的", "masadak": "出來", "caay": "不", "ka": "(否定)",
+    "pahanhan": "休息", "ko": "主格", "tayal": "工作", "nangra": "他們的",
+    "ma'araw": "看見", "matefaday": "掉下的", "posak": "飯粒", "lalan": "路",
+    "liliden": "搬運(被)", "kora": "那個", "panokay": "帶回家", "mafana'": "懂得",
+    "mapapadang": "互助", "saka": "所以", "matatodong": "值得", "minanam": "學習",
+    "kita": "我們", "to": "受格", "lalok": "勤勞"
 }
 
+# [cite_start]單字表 [cite: 83]
 VOCABULARY = [
     {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah"},
     {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok"},
@@ -202,12 +185,14 @@ VOCABULARY = [
     {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad"},
 ]
 
+# [cite_start]句型表 [cite: 71-81]
 SENTENCES = [
     {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... (A是B)"},
     {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都)"},
     {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點"},
 ]
 
+# [cite_start]課文 [cite: 56-62]
 STORY = """
 O kakonah hananay i, o tada malalokay a fao.
 Ano matayal cangra i, saheto o foloday a masadak.
@@ -228,43 +213,30 @@ STORY_ZH = """
 所以，我們值得學習螞蟻的勤勞。
 """
 
-# --- 2. 核心功能：互動式文字生成器 ---
+# --- 2. 核心功能函式 ---
+
 def render_interactive_text(text):
-    """將純文本轉換為帶有 Tooltip 和 OnClick 事件的 HTML"""
-    words = text.split() # 簡單按空格分詞
+    """將純文本轉換為帶有 Tooltip 和 OnClick 事件的 HTML (壓縮版，防止 Markdown 誤判)"""
+    words = text.split() 
     html_parts = []
     
     for word in words:
-        # 清除標點符號以便查找字典 (例如 "fao." -> "fao")
         clean_word = re.sub(r'[^\w\']', '', word).lower()
         display_word = word
-        
-        # 查找翻譯，若無則顯示 '...'
         translation = VOCAB_MAP.get(clean_word, "")
         
+        # 關鍵修正：單行 HTML 拼接
         if translation:
-            # 構建 HTML: 
-            # onclick="speak('word')" -> 觸發 JS 發音
-            # span class="tooltip-text" -> 懸停顯示中文
-            html_chunk = f"""
-            <span class="interactive-word" onclick="speak('{clean_word}')">
-                {display_word}
-                <span class="tooltip-text">{translation}</span>
-            </span>
-            """
+            html_chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}<span class="tooltip-text">{translation}</span></span>'
         else:
-            # 字典裡沒有的詞，就不加互動效果，或只加發音不加翻譯
-            html_chunk = f"""
-            <span class="interactive-word" onclick="speak('{clean_word}')">
-                {display_word}
-            </span>
-            """
+            html_chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}</span>'
+        
         html_parts.append(html_chunk)
     
     return " ".join(html_parts)
 
-# 舊的 gTTS 函數 (保留給整句播放)
 def play_audio(text):
+    """後端語音生成 (作為備用或長句播放)"""
     try:
         tts = gTTS(text=text, lang='id') 
         fp = BytesIO()
@@ -277,6 +249,7 @@ def init_quiz():
     st.session_state.quiz_pool = random.sample(VOCABULARY, 3)
     st.session_state.step = 0
     st.session_state.score = 0
+    # 清除選項快取
     if 'current_options' in st.session_state:
         del st.session_state.current_options
 
@@ -289,13 +262,15 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
+# 分頁
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
+# --- Tab 1: 互動課文 ---
 with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 滑鼠懸停單字可看翻譯，點擊單字可聽發音")
     
-    # 處理課文
+    # 渲染互動文字
     interactive_html = render_interactive_text(STORY.replace('\n', ' <br> '))
     
     st.markdown(f"""
@@ -311,12 +286,13 @@ with tab1:
     if st.button("🔊 播放全課文 (整段)"):
         play_audio(STORY.replace('\n', ' '))
 
+# --- Tab 2: 核心單字 ---
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
         cols = st.columns([0.8, 0.2])
         with cols[0]:
-            # 這裡也加上互動效果
+            # 讓單字卡片也能點擊發音
             st.markdown(f"""
             <div class="word-card">
                 <span class="root-tag">ROOT: {v['root']}</span>
@@ -328,31 +304,30 @@ with tab2:
             """, unsafe_allow_html=True)
         with cols[1]:
             st.write("") 
-            # 保留原本的按鈕作為備用
+            # 備用音檔按鈕
             if st.button("🔊", key=f"voc_{v['amis']}"):
                 play_audio(v['amis'])
 
+# --- Tab 3: 句型解析 ---
 with tab3:
     st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
-        # 將例句也轉換為互動式
         interactive_sentence = render_interactive_text(s['amis'])
-        
         st.markdown(f"""
-        <div class="grammar-box">
+        <div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; margin-bottom:15px; border-radius: 5px;">
             <div style="color:#39FF14; font-size:18px; font-weight:bold; margin-bottom:5px;">
                 >> {interactive_sentence}
             </div>
             <div style="color:#FFF; margin-bottom:8px;">{s['zh']}</div>
             <div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;">
-                <span class="grammar-title">ANALYSIS:</span> {s['note']}
+                <span style="color: #39FF14; font-weight: bold; font-family: 'Orbitron';">ANALYSIS:</span> {s['note']}
             </div>
         </div>
         """, unsafe_allow_html=True)
-        # 這裡也可以讓點擊 ">>" 播放整句
         if st.button("唸句型", key=f"sen_{s['amis'][:5]}"):
             play_audio(s['amis'])
 
+# --- Tab 4: 實戰測驗 ---
 with tab4:
     st.markdown("### // 認知驗證 (Quiz)")
     if 'quiz_pool' not in st.session_state:
@@ -362,6 +337,7 @@ with tab4:
         current_q = st.session_state.quiz_pool[st.session_state.step]
         st.markdown(f"#### Q{st.session_state.step + 1}: 請選擇「<span style='color:#39FF14'>{current_q['zh']}</span>」的阿美語", unsafe_allow_html=True)
         
+        # 選項鎖定邏輯：防止頁面刷新導致選項亂跳
         if 'current_options' not in st.session_state or st.session_state.current_q_ref != current_q['amis']:
             options = [current_q['amis']] + [v['amis'] for v in random.sample(VOCABULARY, 3) if v['amis'] != current_q['amis']]
             options = options[:3] 
@@ -396,4 +372,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 6.6 | Interactive Text Engine Loaded (JS+CSS)")
+st.caption("SYSTEM VER 6.5 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
