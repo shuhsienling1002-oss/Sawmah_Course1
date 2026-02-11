@@ -13,8 +13,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 1. 資料庫 (更新為：Ira to kako a minokay) ---
-# 擴充字典以支援新課文的 Tooltip
+# --- 1. 資料庫 (第 1 課：Ira to kako a minokay) ---
 VOCAB_MAP = {
     "ina": "媽媽", "ira": "有/在/到達", "to": "了(完成貌)", "kako": "我", "a": "連綴詞",
     "minokay": "回家", "kiso": "你", "macahiw": "肚子餓", "o": "是/主格",
@@ -32,7 +31,6 @@ VOCABULARY = [
     {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
 ]
 
-# 這裡填入您要求的詳細語法分析
 SENTENCES = [
     {
         "amis": "Ina, ira to kako a minokay.", 
@@ -63,7 +61,6 @@ SENTENCES = [
     }
 ]
 
-# 課文數據 (更新為：我回來了)
 STORY_DATA = [
     {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。"},
     {"amis": "A! Ira to kiso a minokay!", "zh": "阿！你回來了！"},
@@ -88,12 +85,11 @@ st.markdown("""
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
     
-    /* 中文翻譯區塊樣式 */
     .zh-translation-block {
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
         padding: 20px;
-        margin-top: 5px;
+        margin-top: 0px; /* 修正：移除頂部間距，緊貼上方組件 */
         border-radius: 5px;
         color: #CCC;
         font-size: 16px;
@@ -102,11 +98,24 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.6) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.8) ---
 def get_html_card(item, type="word"):
-    # 設定：full_amis_block 依然保持 110px padding (防切頭)
-    pt = "110px" if type == "full_amis_block" else "60px"
-    mt = "-60px" if type == "full_amis_block" else "-30px" 
+    # --- 關鍵修正區：高度與間距的黃金比例 ---
+    
+    # 1. 課文區 (full_amis_block): 
+    #    Padding-top: 100px (保證 Tooltip 向上彈出不被切)
+    #    Margin-top: -40px (視覺上把文字拉高，不留黑邊)
+    
+    # 2. 句型區 (sentence):
+    #    Padding-top: 80px (給單行句子的 Tooltip 足夠空間，解決「太近被遮」問題)
+    #    Margin-top: -30px (平衡位置)
+    
+    if type == "full_amis_block":
+        pt, mt = "100px", "-40px"
+    elif type == "sentence":
+        pt, mt = "80px", "-30px"
+    else: # word
+        pt, mt = "80px", "-40px"
 
     style_block = f"""<style>
         body {{ background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: {pt}; overflow-x: hidden; }}
@@ -119,7 +128,7 @@ def get_html_card(item, type="word"):
         .play-btn-inline:hover {{ background: #39FF14; color: #000; transform: scale(1.1); }}
         
         /* 單字卡樣式 */
-        .word-card-static {{ background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -30px; height: 100px; box-sizing: border-box; }}
+        .word-card-static {{ background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: {mt}; height: 100px; box-sizing: border-box; }}
         .wc-root-tag {{ font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }}
         .wc-amis {{ color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }}
         .wc-zh {{ color: #FFF; font-size: 16px; font-weight: bold; }}
@@ -148,7 +157,6 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
-        # 互動課文區塊
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -177,7 +185,6 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
-        # 句型解析區塊
         s = item
         words = s['amis'].split()
         parts = []
@@ -193,7 +200,7 @@ def get_html_card(item, type="word"):
             parts.append(chunk)
             
         full_js = s['amis'].replace("'", "\\'")
-        body = f'<div style="font-size: 18px; line-height: 1.6; margin-top: -30px;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
+        body = f'<div style="font-size: 18px; line-height: 1.6; margin-top: {mt};">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
 
@@ -228,10 +235,13 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
+    # 區塊 1: 阿美語全文
+    # 修正：高度設為 400px (緊湊化)，消滅下方大量空白
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
-    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=580, scrolling=True)
+    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # 區塊 2: 中文全文
     zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
     st.markdown(f"""
     <div class="zh-translation-block">
@@ -242,13 +252,14 @@ with tab1:
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
-        components.html(get_html_card(v, type="word"), height=140)
+        components.html(get_html_card(v, type="word"), height=150)
 
 with tab3:
     st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
-        components.html(get_html_card(s, type="sentence"), height=140)
+        # 修正：高度增加至 160px，解決「太近被遮到」的問題
+        components.html(get_html_card(s, type="sentence"), height=160)
         st.markdown(f"""
         <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
         <div style="color:#CCC; font-size:14px; line-height:1.8; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron; font-weight:bold;">ANALYSIS:</span> {s.get('note', '')}</div>
@@ -278,4 +289,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.7 | Content Swapped to 'Ira to kako' | Layout Preserved")
+st.caption("SYSTEM VER 8.8 | Spacing Perfected: Tab 1 Compactness & Tab 3 Visibility")
