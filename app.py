@@ -289,5 +289,6 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.8 | Spacing Perfected: Tab 1 Compactness & Tab 3 Visibility")
+st.caption("協作單位：桃園市阿美族三一教育文化協會")
+
 
