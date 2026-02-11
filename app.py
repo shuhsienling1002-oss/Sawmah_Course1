@@ -43,7 +43,7 @@ SENTENCES = [
     {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點 (受事)"}
 ]
 
-# 課文原子化數據
+# 課文數據
 STORY_DATA = [
     {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
     {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
@@ -68,31 +68,42 @@ st.markdown("""
     
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
+    
+    /* 中文翻譯區塊樣式 */
+    .zh-translation-block {
+        background: rgba(20, 20, 20, 0.6);
+        border-left: 4px solid #AAA;
+        padding: 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        color: #CCC;
+        font-size: 16px;
+        line-height: 2.0;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v7.8) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v7.9) ---
 def get_html_card(item, type="word"):
-    # 針對課文句子優化：增加頂部 Padding 以防 Tooltip 溢出，並實作行內發音鈕
+    # CSS 樣式
     style_block = """<style>
-        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 40px; overflow: hidden; }
+        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 40px; overflow-x: hidden; }
         .interactive-word { position: relative; display: inline-block; border-bottom: 1px dashed #39FF14; cursor: pointer; margin: 0 3px; color: #EEE; transition: 0.3s; font-size: 19px; }
         .interactive-word .tooltip-text { visibility: hidden; min-width: 60px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; }
         .interactive-word:hover .tooltip-text { visibility: visible; opacity: 1; }
         
-        /* 句子卡片佈局 */
-        .amis-row { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-        .zh-row { color: #AAA; font-size: 16px; border-top: 1px solid rgba(57, 255, 20, 0.2); padding-top: 6px; margin-top: 5px; }
-        
-        .play-btn-inline { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; margin-left: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.3s; }
+        .play-btn-inline { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }
         .play-btn-inline:hover { background: #39FF14; color: #000; transform: scale(1.1); }
         
-        /* 單字卡樣式 */
         .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -30px; height: 100px; box-sizing: border-box; }
         .wc-root-tag { font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         .wc-amis { color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }
         .wc-zh { color: #FFF; font-size: 16px; font-weight: bold; }
         .play-btn-large { background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }
+        
+        /* 阿美語全文區塊樣式 */
+        .amis-full-block { line-height: 2.2; font-size: 18px; }
+        .sentence-row { margin-bottom: 12px; display: block; } /* 每一句一行 */
     </style>
     <script>
         function speak(text) { window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance(); msg.text = text; msg.lang = 'id-ID'; msg.rate = 0.9; window.speechSynthesis.speak(msg); }
@@ -111,35 +122,51 @@ def get_html_card(item, type="word"):
             </div>
             <button class="play-btn-large" onclick="speak('{v['amis'].replace("'", "\\'")}')">🔊</button>
         </div>"""
+
+    elif type == "full_amis_block": 
+        # 新增類型：渲染整段阿美語（多句）
+        # item 傳入的是整個 STORY_DATA 列表
+        all_sentences_html = []
         
-    elif type == "story_sentence":
-        s = item
-        words = s['amis'].split()
-        parts = []
-        for w in words:
-            clean_word = re.sub(r"[^\w']", "", w).lower()
-            translation = VOCAB_MAP.get(clean_word, "")
-            js_word = clean_word.replace("'", "\\'") # 喉塞音轉義
+        for sentence_data in item:
+            s_amis = sentence_data['amis']
+            words = s_amis.split()
+            parts = []
             
-            if translation:
-                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
-            else:
-                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
-            parts.append(chunk)
+            # 處理每個單字
+            for w in words:
+                clean_word = re.sub(r"[^\w']", "", w).lower()
+                translation = VOCAB_MAP.get(clean_word, "")
+                js_word = clean_word.replace("'", "\\'") 
+                
+                if translation:
+                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
+                else:
+                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
+                parts.append(chunk)
             
-        full_amis_js = s['amis'].replace("'", "\\'")
+            # 整句發音 JS
+            full_amis_js = s_amis.replace("'", "\\'")
+            
+            # 組裝該句：單字串 + 按鈕
+            sentence_html = f"""
+            <div class="sentence-row">
+                {' '.join(parts)}
+                <button class="play-btn-inline" onclick="speak('{full_amis_js}')" title="播放此句">🔊</button>
+            </div>
+            """
+            all_sentences_html.append(sentence_html)
+            
         body = f"""
-        <div class="amis-row">
-            {' '.join(parts)}
-            <button class="play-btn-inline" onclick="speak('{full_amis_js}')">🔊</button>
+        <div class="amis-full-block">
+            {''.join(all_sentences_html)}
         </div>
-        <div class="zh-row">{s['zh']}</div>
         """
     
-    elif type == "sentence": # 用於 Tab 3
+    elif type == "sentence": 
         s = item
         parts = [f'<span class="interactive-word" onclick="speak(\'{re.sub(r"[^\\w\']", "", w).lower().replace("\'", "\\\'")}\')">{w}<span class="tooltip-text">{VOCAB_MAP.get(re.sub(r"[^\\w\']", "", w).lower(), "")}</span></span>' for w in s['amis'].split()]
-        body = f'<div class="amis-row">{" ".join(parts)}</div><div class="zh-row">{s["zh"]}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{s["amis"].replace("\'", "\\\'")}`)">▶ 播放整句</button>'
+        body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{s["amis"].replace("\'", "\\\'")}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
 
@@ -161,7 +188,7 @@ def generate_quiz():
     random.shuffle(questions)
     return questions[:4]
 
-def play_audio_backend(text): # 僅用於測驗
+def play_audio_backend(text):
     try:
         tts = gTTS(text=text, lang='id'); fp = BytesIO(); tts.write_to_fp(fp); st.audio(fp, format='audio/mp3')
     except: pass
@@ -173,12 +200,21 @@ tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "�
 
 with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
-    st.caption("👆 每張卡片包含：互動阿美語句(點擊單字發音)、中文翻譯、以及行內整句播放(🔊)")
-    for item in STORY_DATA:
-        st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; margin-bottom:15px; border-radius:5px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">""", unsafe_allow_html=True)
-        # 高度設為130以容納兩排文字與Tooltip
-        components.html(get_html_card(item, type="story_sentence"), height=130)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
+    
+    # 區塊 1: 阿美語全文 (互動式)
+    st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
+    # 傳入整個列表，渲染成一個大的阿美語區塊
+    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # 區塊 2: 中文全文 (靜態文字)
+    zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
+    st.markdown(f"""
+    <div class="zh-translation-block">
+        {zh_content}
+    </div>
+    """, unsafe_allow_html=True)
 
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
@@ -215,4 +251,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.8 | Optimized Sentence Cards | Amis-ZH Separation Protocol")
+st.caption("SYSTEM VER 7.9 | Block Separation Layout | Full Text Interaction")
