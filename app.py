@@ -281,7 +281,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako a minokay</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -340,4 +340,5 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 9.0 | Quiz Logic Hardened | No More Broken Clozes")
+st.caption("協作單位：桃園市阿美族三一教育文化協會")
+
