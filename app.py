@@ -286,7 +286,7 @@ st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 with tab1:
-    st.markdown("### // 沉浸模式 (Interactive Immersion)")
+    st.markdown("### // 文章閱讀")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
@@ -301,12 +301,12 @@ with tab1:
     """, unsafe_allow_html=True)
 
 with tab2:
-    st.markdown("### // 數據掃描：原子單字")
+    st.markdown("### // 單字練習")
     for v in VOCABULARY:
         components.html(get_html_card(v, type="word"), height=150)
 
 with tab3:
-    st.markdown("### // 語法解碼：句型結構")
+    st.markdown("### // 句型分析")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
         components.html(get_html_card(s, type="sentence"), height=160)
@@ -341,4 +341,5 @@ with tab4:
 
 st.markdown("---")
 st.caption("協作單位：桃園市阿美族三一教育文化協會")
+
 
