@@ -13,21 +13,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- JavaScript: 瀏覽器原生發音引擎 (零延遲) ---
-# 使用印尼語 (id-ID) 作為阿美語的發音近似替代
-st.markdown("""
-    <script>
-        function speak(text) {
-            var msg = new SpeechSynthesisUtterance();
-            msg.text = text;
-            msg.lang = 'id-ID'; 
-            msg.rate = 0.9; 
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(msg);
-        }
-    </script>
-""", unsafe_allow_html=True)
-
 # --- CSS: 賽博龐克視覺 + 互動元件樣式 ---
 st.markdown("""
     <style>
@@ -61,7 +46,7 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* --- Tabs 樣式修正 (深色模式適配) --- */
+    /* --- Tabs 樣式修正 --- */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         background-color: rgba(255, 255, 255, 0.05);
@@ -160,7 +145,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 1. 資料庫 (Vocabulary & Sentences) ---
-# Tooltip 字典
 VOCAB_MAP = {
     "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/主格",
     "tada": "非常", "malalokay": "勤勞的", "a": "的/連詞", "fao": "昆蟲",
@@ -173,7 +157,6 @@ VOCAB_MAP = {
     "kita": "我們", "to": "受格", "lalok": "勤勞"
 }
 
-# [cite_start]單字表 [cite: 83]
 VOCABULARY = [
     {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah"},
     {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok"},
@@ -185,14 +168,12 @@ VOCABULARY = [
     {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad"},
 ]
 
-# [cite_start]句型表 [cite: 71-81]
 SENTENCES = [
     {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... (A是B)"},
     {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都)"},
     {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點"},
 ]
 
-# [cite_start]課文 [cite: 56-62]
 STORY = """
 O kakonah hananay i, o tada malalokay a fao.
 Ano matayal cangra i, saheto o foloday a masadak.
@@ -213,10 +194,10 @@ STORY_ZH = """
 所以，我們值得學習螞蟻的勤勞。
 """
 
-# --- 2. 核心功能函式 ---
+# --- 2. 核心功能函式 (修正版) ---
 
 def render_interactive_text(text):
-    """將純文本轉換為帶有 Tooltip 和 OnClick 事件的 HTML (壓縮版，防止 Markdown 誤判)"""
+    """將純文本轉換為帶有 Tooltip 和 Inline JS 的 HTML"""
     words = text.split() 
     html_parts = []
     
@@ -225,11 +206,14 @@ def render_interactive_text(text):
         display_word = word
         translation = VOCAB_MAP.get(clean_word, "")
         
-        # 關鍵修正：單行 HTML 拼接
+        # 核心修正：將 JS 邏輯直接寫入 onclick，不依賴外部函數
+        # window.speechSynthesis.cancel() 用於中斷上一句，避免聲音重疊
+        js_code = f"window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance('{clean_word}'); msg.lang='id-ID'; msg.rate=0.9; window.speechSynthesis.speak(msg);"
+        
         if translation:
-            html_chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}<span class="tooltip-text">{translation}</span></span>'
+            html_chunk = f'<span class="interactive-word" onclick="{js_code}">{display_word}<span class="tooltip-text">{translation}</span></span>'
         else:
-            html_chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}</span>'
+            html_chunk = f'<span class="interactive-word" onclick="{js_code}">{display_word}</span>'
         
         html_parts.append(html_chunk)
     
@@ -249,7 +233,6 @@ def init_quiz():
     st.session_state.quiz_pool = random.sample(VOCABULARY, 3)
     st.session_state.step = 0
     st.session_state.score = 0
-    # 清除選項快取
     if 'current_options' in st.session_state:
         del st.session_state.current_options
 
@@ -262,7 +245,6 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# 分頁
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 # --- Tab 1: 互動課文 ---
@@ -270,7 +252,6 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 滑鼠懸停單字可看翻譯，點擊單字可聽發音")
     
-    # 渲染互動文字
     interactive_html = render_interactive_text(STORY.replace('\n', ' <br> '))
     
     st.markdown(f"""
@@ -291,12 +272,14 @@ with tab2:
     st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
         cols = st.columns([0.8, 0.2])
+        # 修正：單字卡片也使用 Inline JS
+        js_code_card = f"window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance('{v['amis']}'); msg.lang='id-ID'; msg.rate=0.9; window.speechSynthesis.speak(msg);"
+        
         with cols[0]:
-            # 讓單字卡片也能點擊發音
             st.markdown(f"""
             <div class="word-card">
                 <span class="root-tag">ROOT: {v['root']}</span>
-                <div class="amis-text" style="cursor:pointer;" onclick="speak('{v['amis']}')">
+                <div class="amis-text" style="cursor:pointer;" onclick="{js_code_card}">
                     {v['emoji']} {v['amis']}
                 </div>
                 <div class="zh-text">{v['zh']}</div>
@@ -304,7 +287,6 @@ with tab2:
             """, unsafe_allow_html=True)
         with cols[1]:
             st.write("") 
-            # 備用音檔按鈕
             if st.button("🔊", key=f"voc_{v['amis']}"):
                 play_audio(v['amis'])
 
@@ -337,7 +319,6 @@ with tab4:
         current_q = st.session_state.quiz_pool[st.session_state.step]
         st.markdown(f"#### Q{st.session_state.step + 1}: 請選擇「<span style='color:#39FF14'>{current_q['zh']}</span>」的阿美語", unsafe_allow_html=True)
         
-        # 選項鎖定邏輯：防止頁面刷新導致選項亂跳
         if 'current_options' not in st.session_state or st.session_state.current_q_ref != current_q['amis']:
             options = [current_q['amis']] + [v['amis'] for v in random.sample(VOCABULARY, 3) if v['amis'] != current_q['amis']]
             options = options[:3] 
@@ -372,4 +353,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 6.5 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
+st.caption("SYSTEM VER 6.6 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
