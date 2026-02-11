@@ -43,15 +43,16 @@ SENTENCES = [
     {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點 (受事)"}
 ]
 
-STORY = """O kakonah hananay i, o tada malalokay a fao.
-Ano matayal cangra i, saheto o foloday a masadak.
-Caay ka pahanhan ko tayal nangra.
-Ma'araw nangra ko matefaday a posak i lalan.
-Liliden nangra kora posak a panokay.
-Mafana' a mapapadang ko kakonah.
-Saka, matatodong a minanam kita to lalok no kakonah."""
-
-STORY_ZH = "所謂的螞蟻，是非常勤勞的昆蟲。當牠們工作時，都是成群結隊地出來。牠們的工作從不休息。牠們看見了掉在路上的飯粒。牠們便將那飯粒搬運回家。螞蟻懂得互相幫助。所以，我們值得學習螞蟻的勤勞。"
+# 修正：將課文拆解為獨立的句子列表，方便逐句顯示與發音
+STORY_DATA = [
+    {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
+    {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
+    {"amis": "Caay ka pahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
+    {"amis": "Ma'araw nangra ko matefaday a posak i lalan.", "zh": "牠們看見了掉在路上的飯粒。"},
+    {"amis": "Liliden nangra kora posak a panokay.", "zh": "牠們便將那飯粒搬運回家。"},
+    {"amis": "Mafana' a mapapadang ko kakonah.", "zh": "螞蟻懂得互相幫助。"},
+    {"amis": "Saka, matatodong a minanam kita to lalok no kakonah.", "zh": "所以，我們值得學習螞蟻的勤勞。"}
+]
 
 # --- 2. 視覺系統 (CSS 注入) ---
 st.markdown("""
@@ -71,7 +72,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (修復版) ---
+# --- 3. 核心技術：沙盒渲染引擎 ---
 def get_html_card(item, type="word"):
     style_block = """<style>
         body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 10px; padding-top: 40px; overflow: hidden; }
@@ -110,10 +111,8 @@ def get_html_card(item, type="word"):
         for w in words:
             clean_word = re.sub(r"[^\w']", "", w).lower()
             translation = VOCAB_MAP.get(clean_word, "")
-            # 關鍵修復：單引號轉義，防止 JS 報錯
             js_word = clean_word.replace("'", "\\'")
             
-            # 關鍵修復：只有在有翻譯時才添加 tooltip-text
             if translation:
                 chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
             else:
@@ -121,29 +120,10 @@ def get_html_card(item, type="word"):
             parts.append(chunk)
             
         body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button class="full-play-btn" onclick="speak(`{s["amis"]}`)">▶ 播放完整句子</button>'
-        
-    elif type == "story":
-        parts = []
-        for line in item.split('\n'):
-            line_words = line.split()
-            line_parts = []
-            for w in line_words:
-                clean_word = re.sub(r"[^\w']", "", w).lower()
-                translation = VOCAB_MAP.get(clean_word, "")
-                js_word = clean_word.replace("'", "\\'")
-                
-                if translation:
-                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
-                else:
-                    chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
-                line_parts.append(chunk)
-            parts.append(" ".join(line_parts) + "<br>")
-            
-        body = f'<div style="font-size: 20px; line-height: 2.2;">{" ".join(parts)}</div>'
 
     return header + body + "</body></html>"
 
-# --- 4. 測驗生成引擎 (Quiz Engine) ---
+# --- 4. 測驗生成引擎 ---
 def generate_quiz():
     questions = []
     
@@ -238,10 +218,14 @@ tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "�
 
 with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
-    st.caption("👆 點擊單字聽發音，滑鼠懸停看翻譯")
-    components.html(get_html_card(STORY, type="story"), height=420, scrolling=True)
-    with st.expander("查看中文全文翻譯"):
-        st.markdown(f"<p style='color:#AAA;'>{STORY_ZH}</p>", unsafe_allow_html=True)
+    st.caption("👆 每一句都是獨立卡片，點擊單字查義，點擊按鈕聽整句")
+    
+    # 修正：遍歷 STORY_DATA，逐句生成卡片
+    for item in STORY_DATA:
+        st.markdown("""<div style="background:rgba(20,20,20,0.5); padding:10px; border-left:4px solid #39FF14; margin-bottom:15px; border-radius:5px;">""", unsafe_allow_html=True)
+        # 複用 'sentence' 類型的渲染邏輯，這樣就有互動單字和整句播放按鈕
+        components.html(get_html_card(item, type="sentence"), height=140)
+        st.markdown(f"""<div style="color:#BBB; padding-left:5px; font-size:16px;">{item['zh']}</div></div>""", unsafe_allow_html=True)
 
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
@@ -299,4 +283,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.5 | Interaction Engine Restored | JS Escaping Fixed")
+st.caption("SYSTEM VER 7.6 | Content Atomization Active | Sentence-based Learning Enabled")
