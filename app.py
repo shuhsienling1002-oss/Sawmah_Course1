@@ -8,50 +8,46 @@ from io import BytesIO
 
 # --- 0. 系統配置 ---
 st.set_page_config(
-    page_title="O kakonah - 螞蟻", 
-    page_icon="🐜", 
+    page_title="Ira to kako a minokay - 我回來了", 
+    page_icon="🏠", 
     layout="centered"
 )
 
-# --- 1. 資料庫 (第 1 課：O kakonah) ---
+# --- 1. 資料庫 (新課程：Ira to kako a minokay) ---
+# 用於 Tooltip 的字典
 VOCAB_MAP = {
-    "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/述格",
-    "tada": "非常", "malalokay": "勤勞的", "a": "連接詞", "fao": "昆蟲",
-    "ano": "當/若", "matayal": "工作", "cangra": "他們", "saheto": "全部",
-    "foloday": "一群的", "masadak": "出來", "caay": "不", "ka": "否定綴詞",
-    "pahanhan": "休息", "ko": "主格", "tayal": "工作", "nangra": "他們的",
-    "ma'araw": "看見", "matefaday": "掉下的", "posak": "飯粒", "lalan": "路",
-    "liliden": "搬運(被)", "kora": "那個", "panokay": "帶回家", "mafana'": "懂得",
-    "mapapadang": "互助", "saka": "所以", "matatodong": "值得", "minanam": "學習",
-    "kita": "我們", "to": "受格", "lalok": "勤勞", "no": "的/屬格"
+    "ina": "媽媽", "ira": "有/在/到達", "to": "了(完成貌)", "kako": "我", "a": "連綴詞",
+    "minokay": "回家", "kiso": "你", "macahiw": "肚子餓", "o": "是/主格",
+    "maan": "什麼", "ko": "主格標記", "kaolahan": "喜歡的/想要的", "iso": "你的",
+    "mangalay": "想要", "komaen": "吃", "konga": "地瓜", "hay": "好/是的",
+    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)"
 }
 
+# 單字表
 VOCABULARY = [
-    {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah", "root_zh": "螞蟻"},
-    {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok", "root_zh": "勤勞"},
-    {"amis": "fao", "zh": "昆蟲/蟲", "emoji": "🐛", "root": "fao", "root_zh": "昆蟲"},
-    {"amis": "foloday", "zh": "一群的", "emoji": "👥", "root": "folod", "root_zh": "群體"},
-    {"amis": "tayal", "zh": "工作", "emoji": "🛠️", "root": "tayal", "root_zh": "工作"},
-    {"amis": "posak", "zh": "飯粒", "emoji": "🍚", "root": "posak", "root_zh": "飯粒"},
-    {"amis": "liliden", "zh": "搬移(要被...)", "emoji": "📦", "root": "lilid", "root_zh": "搬運"},
-    {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad", "root_zh": "掉落"},
+    {"amis": "minokay", "zh": "回家/回來", "emoji": "🏠", "root": "nokay", "root_zh": "回家"},
+    {"amis": "macahiw", "zh": "肚子餓了", "emoji": "🤤", "root": "cahiw", "root_zh": "餓"},
+    {"amis": "kaolahan", "zh": "所喜愛的", "emoji": "💖", "root": "olah", "root_zh": "喜愛"},
+    {"amis": "konga", "zh": "地瓜", "emoji": "🍠", "root": "konga", "root_zh": "地瓜"},
+    {"amis": "parad", "zh": "桌子/長凳", "emoji": "🪑", "root": "parad", "root_zh": "平台"},
+    {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
 ]
 
+# 句型解析
 SENTENCES = [
-    {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... 句型"},
-    {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都)"},
-    {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點 (受事)"}
+    {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。", "note": "ira(到達) + to(完成) + minokay(回家)"},
+    {"amis": "O maan ko kaolahan iso?", "zh": "你想要/喜歡什麼？", "note": "O maan(是什麼) ... kaolahan(喜歡的事物)"},
+    {"amis": "Hay, ira i parad ko konga, alaen.", "zh": "好，地瓜在桌子上，去拿吧。", "note": "i parad(在桌上); alaen(去拿-祈使)"}
 ]
 
-# 課文數據
+# 課文對話 (分句)
 STORY_DATA = [
-    {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
-    {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
-    {"amis": "Caay kapahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
-    {"amis": "Ma'araw nangra ko matefaday a posak i lalan.", "zh": "牠們看見了掉在路上的飯粒。"},
-    {"amis": "Liliden nangra kora posak a panokay.", "zh": "牠們便將那飯粒搬運回家。"},
-    {"amis": "Mafana' a mapapadang ko kakonah.", "zh": "螞蟻懂得互相幫助。"},
-    {"amis": "Saka, matatodong a minanam kita to lalok no kakonah.", "zh": "所以，我們值得學習螞蟻的勤勞。"}
+    {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。"},
+    {"amis": "A! Ira to kiso a minokay!", "zh": "阿！你回來了！"},
+    {"amis": "Macahiw kako.", "zh": "我肚子餓了。"},
+    {"amis": "O maan ko kaolahan iso?", "zh": "你想要吃什麼？"},
+    {"amis": "Mangalay kako a komaen to konga.", "zh": "我想要吃地瓜。"},
+    {"amis": "Hay, ira i parad ko konga, alaen.", "zh": "好，地瓜在桌子上，去拿吧。"}
 ]
 
 # --- 2. 視覺系統 (CSS 注入) ---
@@ -83,9 +79,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.1) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.2) ---
 def get_html_card(item, type="word"):
-    # 關鍵修正：padding-top: 100px (確保 Tooltip 不被切掉)，並調整 margin 補償
+    # 保持 v8.1 的 padding-top: 100px 設置，確保頂部 Tooltip 不被切掉
     style_block = """<style>
         body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 100px; overflow-x: hidden; }
         
@@ -96,14 +92,14 @@ def get_html_card(item, type="word"):
         .play-btn-inline { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }
         .play-btn-inline:hover { background: #39FF14; color: #000; transform: scale(1.1); }
         
-        /* 單字卡樣式 - 補償上方 padding */
+        /* 單字卡樣式 */
         .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -70px; height: 100px; box-sizing: border-box; }
         .wc-root-tag { font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         .wc-amis { color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }
         .wc-zh { color: #FFF; font-size: 16px; font-weight: bold; }
         .play-btn-large { background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }
         
-        /* 阿美語全文區塊樣式 - 補償上方 padding */
+        /* 阿美語全文區塊樣式 */
         .amis-full-block { line-height: 2.2; font-size: 18px; margin-top: -30px; }
         .sentence-row { margin-bottom: 12px; display: block; }
     </style>
@@ -169,7 +165,6 @@ def get_html_card(item, type="word"):
             parts.append(chunk)
             
         full_js = s['amis'].replace("'", "\\'")
-        # 在 iframe 裡只顯示互動阿美語句子 + 按鈕，中文顯示在 iframe 外的 markdown
         body = f'<div style="font-size: 18px; line-height: 1.6; margin-top: -30px;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
@@ -197,15 +192,15 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：螞蟻</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：螞蟻 (新版)</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 with tab1:
-    st.markdown("### // 請閱讀文章")
+    st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
-    # 區塊 1: 阿美語全文 (互動式) - 增加高度適應 padding
+    # 區塊 1: 阿美語全文 (互動式) - 高度設為 550 以容納更多行數
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
     components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=550, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -219,16 +214,15 @@ with tab1:
     """, unsafe_allow_html=True)
 
 with tab2:
-    st.markdown("### // 單字練習")
+    st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
         components.html(get_html_card(v, type="word"), height=140)
 
 with tab3:
-    st.markdown("### // 句型結構")
+    st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
         components.html(get_html_card(s, type="sentence"), height=140)
-        # 修正：將消失的中文翻譯加回來，放在 NOTE 上方
         st.markdown(f"""
         <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
         <div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron;">NOTE:</span> {s.get('note', '')}</div>
@@ -258,11 +252,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("協作單位：桃園市阿美族三一教育文化協會")
-
-
-
-
-
-
-
+st.caption("SYSTEM VER 8.2 | New Lesson Loaded: Ira to kako a minokay")
