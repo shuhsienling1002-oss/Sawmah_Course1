@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import random
 import re
-import time  # 修正：補上遺失的 time 模組，解決實戰測驗崩潰問題
+import time
 from gtts import gTTS
 from io import BytesIO
 
@@ -82,7 +82,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. 資料庫 ---
+# --- 1. 資料庫 (新增 root_zh 欄位) ---
 VOCAB_MAP = {
     "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/主格",
     "tada": "非常", "malalokay": "勤勞的", "a": "的/連詞", "fao": "昆蟲",
@@ -95,15 +95,16 @@ VOCAB_MAP = {
     "kita": "我們", "to": "受格", "lalok": "勤勞"
 }
 
+# 修正：新增 'root_zh' 欄位，定義詞根的中文意思
 VOCABULARY = [
-    {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah"},
-    {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok"},
-    {"amis": "fao", "zh": "昆蟲/蟲", "emoji": "🐛", "root": "fao"},
-    {"amis": "foloday", "zh": "一群的", "emoji": "👥", "root": "folod"},
-    {"amis": "tayal", "zh": "工作", "emoji": "🛠️", "root": "tayal"},
-    {"amis": "posak", "zh": "飯粒", "emoji": "🍚", "root": "posak"},
-    {"amis": "liliden", "zh": "搬移(被...)", "emoji": "📦", "root": "lilid"},
-    {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad"},
+    {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah", "root_zh": "螞蟻"},
+    {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok", "root_zh": "勤勞"},
+    {"amis": "fao", "zh": "昆蟲/蟲", "emoji": "🐛", "root": "fao", "root_zh": "昆蟲"},
+    {"amis": "foloday", "zh": "一群的", "emoji": "👥", "root": "folod", "root_zh": "群體"},
+    {"amis": "tayal", "zh": "工作", "emoji": "🛠️", "root": "tayal", "root_zh": "工作"},
+    {"amis": "posak", "zh": "飯粒", "emoji": "🍚", "root": "posak", "root_zh": "飯粒"},
+    {"amis": "liliden", "zh": "搬移(被...)", "emoji": "📦", "root": "lilid", "root_zh": "帶領/搬運"},
+    {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad", "root_zh": "掉落"},
 ]
 
 SENTENCES = [
@@ -137,10 +138,9 @@ STORY_ZH = """
 def get_html_card(item, type="word"):
     """
     生成 HTML 卡片
-    修正：移除多餘縮排，防止 iframe 渲染錯誤
     """
     
-    # CSS 和 JS 區塊 (保持不變，但注意不要縮排 doctype)
+    # CSS 和 JS 區塊
     style_block = """
         <style>
             body {
@@ -195,7 +195,7 @@ def get_html_card(item, type="word"):
                 background: rgba(20, 30, 20, 0.9);
                 border: 1px solid #39FF14;
                 border-left: 5px solid #39FF14;
-                padding: 10px 15px;
+                padding: 12px 18px; /* 加大 Padding */
                 border-radius: 5px;
                 display: flex;
                 justify-content: space-between;
@@ -203,9 +203,30 @@ def get_html_card(item, type="word"):
                 margin-top: -20px;
             }
             .wc-left { flex: 1; }
-            .wc-amis { color: #39FF14; font-size: 20px; font-weight: bold; }
-            .wc-zh { color: #BBB; font-size: 14px; margin-top: 2px; }
-            .wc-root { font-size: 12px; background: #39FF14; color: #000; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-bottom: 5px; display: inline-block;}
+            
+            /* 詞根樣式優化 */
+            .wc-root-container {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 5px;
+            }
+            .wc-root-tag { 
+                font-size: 12px; 
+                background: #39FF14; 
+                color: #000; 
+                padding: 2px 6px; 
+                border-radius: 3px; 
+                font-weight: bold; 
+            }
+            .wc-root-zh {
+                font-size: 13px;
+                color: #BBB;
+            }
+            
+            .wc-amis { color: #39FF14; font-size: 22px; font-weight: bold; margin: 3px 0; }
+            .wc-zh { color: #FFF; font-size: 16px; margin-top: 2px; font-weight: 500; } /* 提高中文可讀性 */
+            
             .play-btn {
                 background: transparent;
                 border: 1px solid #39FF14;
@@ -215,13 +236,14 @@ def get_html_card(item, type="word"):
                 cursor: pointer;
                 font-size: 16px;
                 transition: 0.3s;
-                width: 35px;
-                height: 35px;
+                width: 40px;
+                height: 40px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
             }
             .play-btn:hover { background: #39FF14; color: #000; }
+            
             .full-play-btn {
                 margin-top: 15px;
                 background: rgba(57, 255, 20, 0.1);
@@ -249,7 +271,6 @@ def get_html_card(item, type="word"):
         </script>
     """
 
-    # 修正：確保 HTML 字串開頭沒有縮排
     header_start = "<!DOCTYPE html><html><head>"
     header_end = "</head><body>"
     full_header = header_start + '<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap" rel="stylesheet">' + style_block + header_end
@@ -258,10 +279,14 @@ def get_html_card(item, type="word"):
     
     if type == "word":
         v = item
+        # 修正：單字卡加入 root_zh 並強化 zh 的顯示
         body = f"""
         <div class="word-card-static">
             <div class="wc-left">
-                <div class="wc-root">ROOT: {v['root']}</div>
+                <div class="wc-root-container">
+                    <span class="wc-root-tag">ROOT: {v['root']}</span>
+                    <span class="wc-root-zh">({v['root_zh']})</span>
+                </div>
                 <div class="wc-amis">{v['emoji']} {v['amis']}</div>
                 <div class="wc-zh">{v['zh']}</div>
             </div>
@@ -271,7 +296,6 @@ def get_html_card(item, type="word"):
         
     elif type == "sentence":
         s = item
-        # 修正：先替換換行，再拆分，避免 <br> 被當作單字
         words = s['amis'].split()
         html_parts = []
         for word in words:
@@ -294,8 +318,6 @@ def get_html_card(item, type="word"):
 
     elif type == "story":
         text = item
-        # 修正：處理 <br> 標籤，防止它們被包在 span 裡
-        # 先將換行符號轉為特殊標記，分割後再處理
         parts = text.replace('\n', ' <BR_MARKER> ').split()
         html_parts = []
         
@@ -345,7 +367,6 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 點擊單字聽發音，滑鼠懸停看翻譯")
     
-    # 修正：傳入純文字，不要預先加 <br>
     html_code = get_html_card(STORY, type="story")
     
     st.markdown(f"""
@@ -361,8 +382,9 @@ with tab1:
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
+        # 單字卡高度稍微增加以容納更多資訊
         html_code = get_html_card(v, type="word")
-        components.html(html_code, height=90)
+        components.html(html_code, height=100)
 
 # --- Tab 3: 句型解析 ---
 with tab3:
@@ -410,7 +432,7 @@ with tab4:
                     if opt == current_q['amis']:
                         st.success("通過 (Access Granted)")
                         st.session_state.score += 1
-                        time.sleep(1) # 這裡原本報錯，因為沒 import time
+                        time.sleep(1)
                     else:
                         st.error(f"錯誤 (Denied) - 正解: {current_q['amis']}")
                         time.sleep(2)
@@ -428,4 +450,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.0 | Critical Patch Applied: HTML Formatting & Imports Fixed")
+st.caption("SYSTEM VER 7.1 | Vocabulary Logic Expanded | Root Translation Added")
