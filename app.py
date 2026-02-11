@@ -83,11 +83,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v7.9) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.0) ---
 def get_html_card(item, type="word"):
-    # CSS 樣式
+    # CSS: 關鍵修正 padding-top: 70px 解決第一行 Tooltip 被切掉的問題
     style_block = """<style>
-        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 40px; overflow-x: hidden; }
+        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 70px; overflow-x: hidden; }
         .interactive-word { position: relative; display: inline-block; border-bottom: 1px dashed #39FF14; cursor: pointer; margin: 0 3px; color: #EEE; transition: 0.3s; font-size: 19px; }
         .interactive-word .tooltip-text { visibility: hidden; min-width: 60px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; }
         .interactive-word:hover .tooltip-text { visibility: visible; opacity: 1; }
@@ -102,8 +102,8 @@ def get_html_card(item, type="word"):
         .play-btn-large { background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }
         
         /* 阿美語全文區塊樣式 */
-        .amis-full-block { line-height: 2.2; font-size: 18px; }
-        .sentence-row { margin-bottom: 12px; display: block; } /* 每一句一行 */
+        .amis-full-block { line-height: 2.2; font-size: 18px; margin-top: -30px; }
+        .sentence-row { margin-bottom: 12px; display: block; }
     </style>
     <script>
         function speak(text) { window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance(); msg.text = text; msg.lang = 'id-ID'; msg.rate = 0.9; window.speechSynthesis.speak(msg); }
@@ -124,16 +124,11 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
-        # 新增類型：渲染整段阿美語（多句）
-        # item 傳入的是整個 STORY_DATA 列表
         all_sentences_html = []
-        
         for sentence_data in item:
             s_amis = sentence_data['amis']
             words = s_amis.split()
             parts = []
-            
-            # 處理每個單字
             for w in words:
                 clean_word = re.sub(r"[^\w']", "", w).lower()
                 translation = VOCAB_MAP.get(clean_word, "")
@@ -145,10 +140,7 @@ def get_html_card(item, type="word"):
                     chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
                 parts.append(chunk)
             
-            # 整句發音 JS
             full_amis_js = s_amis.replace("'", "\\'")
-            
-            # 組裝該句：單字串 + 按鈕
             sentence_html = f"""
             <div class="sentence-row">
                 {' '.join(parts)}
@@ -157,32 +149,41 @@ def get_html_card(item, type="word"):
             """
             all_sentences_html.append(sentence_html)
             
-        body = f"""
-        <div class="amis-full-block">
-            {''.join(all_sentences_html)}
-        </div>
-        """
+        body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
+        # 修復：恢復詳細的迴圈邏輯，確保只有有翻譯時才顯示 Tooltip，並修復 JS 轉義
         s = item
-        parts = [f'<span class="interactive-word" onclick="speak(\'{re.sub(r"[^\\w\']", "", w).lower().replace("\'", "\\\'")}\')">{w}<span class="tooltip-text">{VOCAB_MAP.get(re.sub(r"[^\\w\']", "", w).lower(), "")}</span></span>' for w in s['amis'].split()]
-        body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{s["amis"].replace("\'", "\\\'")}`)">▶ 播放整句</button>'
+        words = s['amis'].split()
+        parts = []
+        for w in words:
+            clean_word = re.sub(r"[^\w']", "", w).lower()
+            translation = VOCAB_MAP.get(clean_word, "")
+            js_word = clean_word.replace("'", "\\'") # 確保喉塞音不報錯
+            
+            if translation:
+                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
+            else:
+                chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}</span>'
+            parts.append(chunk)
+            
+        full_js = s['amis'].replace("'", "\\'")
+        body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
 
 # --- 4. 測驗生成引擎 ---
 def generate_quiz():
     questions = []
-    # 聽力題
     q1 = random.choice(VOCABULARY); q1_opts = [q1['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q1], 2)]; random.shuffle(q1_opts)
     questions.append({"type": "listen", "tag": "🎧 聽音辨義", "text": "請聽語音，選擇正確的單字", "audio": q1['amis'], "correct": q1['amis'], "options": q1_opts})
-    # 翻譯題
+    
     q2 = random.choice(VOCABULARY); q2_opts = [q2['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q2], 2)]; random.shuffle(q2_opts)
     questions.append({"type": "trans", "tag": "🧩 詞義連結", "text": f"請選擇「<span style='color:#39FF14'>{q2['zh']}</span>」的阿美語", "correct": q2['amis'], "options": q2_opts})
-    # 詞根題
+    
     q3 = random.choice([v for v in VOCABULARY if v['root'] != v['amis']] or VOCABULARY); other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q3['root']])); q3_opts = [q3['root']] + random.sample(other_roots, min(len(other_roots), 2)); random.shuffle(q3_opts)
     questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的詞根是？", "correct": q3['root'], "options": q3_opts, "note": f"詞根意思：{q3['root_zh']}"})
-    # 聽力句子題
+    
     q4 = random.choice(SENTENCES)
     questions.append({"type": "listen_sent", "tag": "🔊 語感聽解", "text": "請聽句子，選擇正確的中文", "audio": q4['amis'], "correct": q4['zh'], "options": [q4['zh']] + [s['zh'] for s in random.sample([x for x in SENTENCES if x != q4], 2)]})
     random.shuffle(questions)
@@ -204,7 +205,6 @@ with tab1:
     
     # 區塊 1: 阿美語全文 (互動式)
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
-    # 傳入整個列表，渲染成一個大的阿美語區塊
     components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -251,4 +251,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.9 | Block Separation Layout | Full Text Interaction")
+st.caption("SYSTEM VER 8.0 | Final Polish: Tooltip & Interaction Restored")
