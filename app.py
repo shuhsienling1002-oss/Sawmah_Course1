@@ -47,39 +47,27 @@ st.markdown("""
     }
 
     /* --- 修正 Tabs 可讀性 (Critical Patch) --- */
-    /* Tab 容器 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 1px solid #333;
-    }
-
-    /* 未選中的 Tab：強制白色文字 */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
-        background-color: rgba(255, 255, 255, 0.05); /* 輕微背景色 */
+        background-color: rgba(255, 255, 255, 0.05);
         border-radius: 5px 5px 0 0;
-        color: #FFFFFF !important; /* 修正點：強制純白文字 */
+        color: #FFFFFF !important; /* 強制純白 */
         font-weight: 500;
         border: 1px solid transparent;
     }
-
-    /* 被選中的 Tab：霓虹綠發光 */
     .stTabs [aria-selected="true"] {
         background-color: rgba(57, 255, 20, 0.1) !important;
         border: 1px solid #39FF14;
         border-bottom: none;
-        color: #39FF14 !important; /* 修正點：選中時變綠 */
+        color: #39FF14 !important; /* 選中變綠 */
         font-weight: bold;
         box-shadow: 0 -5px 10px rgba(57, 255, 20, 0.1);
     }
-    
-    /* Hover 效果 */
     .stTabs [data-baseweb="tab"]:hover {
         background-color: rgba(57, 255, 20, 0.2);
         color: #39FF14 !important;
     }
-
-    /* --- End of Tabs Fix --- */
 
     /* 單字卡片 */
     .word-card {
@@ -187,6 +175,9 @@ def init_quiz():
     st.session_state.quiz_pool = random.sample(VOCABULARY, 3)
     st.session_state.step = 0
     st.session_state.score = 0
+    # 清除舊的選項紀錄，確保新局開始是乾淨的
+    if 'current_options' in st.session_state:
+        del st.session_state.current_options
 
 # --- 3. UI 呈現 ---
 st.markdown("""
@@ -197,7 +188,6 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# Tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 課文朗讀", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 with tab1:
@@ -225,7 +215,7 @@ with tab2:
             </div>
             """, unsafe_allow_html=True)
         with cols[1]:
-            st.write("") # Spacer
+            st.write("") 
             if st.button("🔊", key=f"voc_{v['amis']}"):
                 play_audio(v['amis'])
 
@@ -253,21 +243,37 @@ with tab4:
         current_q = st.session_state.quiz_pool[st.session_state.step]
         st.markdown(f"#### Q{st.session_state.step + 1}: 請選擇「<span style='color:#39FF14'>{current_q['zh']}</span>」的阿美語", unsafe_allow_html=True)
         
-        options = [current_q['amis']] + [v['amis'] for v in random.sample(VOCABULARY, 3) if v['amis'] != current_q['amis']]
-        options = options[:3] 
-        random.shuffle(options)
+        # --- 核心修復：選項鎖定邏輯 ---
+        # 檢查是否已經為當前題目生成過選項，如果沒有（或是進入新的一題），則生成並儲存
+        # 使用 'current_q_amis' 來判斷是否是同一題
+        if 'current_options' not in st.session_state or st.session_state.current_q_ref != current_q['amis']:
+            
+            # 生成選項
+            options = [current_q['amis']] + [v['amis'] for v in random.sample(VOCABULARY, 3) if v['amis'] != current_q['amis']]
+            options = options[:3] 
+            random.shuffle(options)
+            
+            # 鎖定狀態
+            st.session_state.current_options = options
+            st.session_state.current_q_ref = current_q['amis']
+        
+        # 從鎖定的狀態中讀取選項，而不是重新生成
+        locked_options = st.session_state.current_options
         
         cols = st.columns(3)
-        for i, opt in enumerate(options):
+        for i, opt in enumerate(locked_options):
             with cols[i]:
+                # 這裡的 opt 來自 locked_options，不會因為頁面重整而改變順序
                 if st.button(opt, key=f"opt_{i}_{st.session_state.step}"):
                     if opt == current_q['amis']:
                         st.success("通過 (Access Granted)")
                         st.session_state.score += 1
+                        time.sleep(1) # 讓用戶看到成功訊息
                     else:
                         st.error(f"錯誤 (Denied) - 正解: {current_q['amis']}")
+                        time.sleep(2) # 錯誤時多停留一下
                     
-                    time.sleep(1)
+                    # 進入下一題
                     st.session_state.step += 1
                     st.rerun()
     else:
@@ -282,4 +288,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 6.4 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
+st.caption("SYSTEM VER 6.5 | Bug Fixed: Option Stability Protocol")
