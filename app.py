@@ -47,7 +47,7 @@ SENTENCES = [
 STORY_DATA = [
     {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
     {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
-    {"amis": "Caay ka pahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
+    {"amis": "Caay kapahanhan ko tayal nangra.", "zh": "牠們的工作從不休息。"},
     {"amis": "Ma'araw nangra ko matefaday a posak i lalan.", "zh": "牠們看見了掉在路上的飯粒。"},
     {"amis": "Liliden nangra kora posak a panokay.", "zh": "牠們便將那飯粒搬運回家。"},
     {"amis": "Mafana' a mapapadang ko kakonah.", "zh": "螞蟻懂得互相幫助。"},
@@ -259,3 +259,4 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
+
