@@ -12,11 +12,12 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS 視覺魔法 (賽博龐克 - 螞蟻森林版) ---
+# --- CSS 視覺魔法 (賽博龐克 - 螞蟻森林版 + 高對比修正) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
 
+    /* 全局背景 */
     .stApp { 
         background-color: #0a0e05;
         background-image: linear-gradient(rgba(57, 255, 20, 0.05) 1px, transparent 1px),
@@ -45,7 +46,42 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* 單字卡片 (10-3 規格) */
+    /* --- 修正 Tabs 可讀性 (Critical Patch) --- */
+    /* Tab 容器 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 1px solid #333;
+    }
+
+    /* 未選中的 Tab：強制白色文字 */
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.05); /* 輕微背景色 */
+        border-radius: 5px 5px 0 0;
+        color: #FFFFFF !important; /* 修正點：強制純白文字 */
+        font-weight: 500;
+        border: 1px solid transparent;
+    }
+
+    /* 被選中的 Tab：霓虹綠發光 */
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(57, 255, 20, 0.1) !important;
+        border: 1px solid #39FF14;
+        border-bottom: none;
+        color: #39FF14 !important; /* 修正點：選中時變綠 */
+        font-weight: bold;
+        box-shadow: 0 -5px 10px rgba(57, 255, 20, 0.1);
+    }
+    
+    /* Hover 效果 */
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(57, 255, 20, 0.2);
+        color: #39FF14 !important;
+    }
+
+    /* --- End of Tabs Fix --- */
+
+    /* 單字卡片 */
     .word-card {
         background: rgba(20, 30, 20, 0.9);
         border: 1px solid #39FF14;
@@ -89,16 +125,17 @@ st.markdown("""
         background: transparent !important;
         color: #39FF14 !important;
         width: 100%;
+        border-radius: 5px;
     }
     .stButton>button:hover {
         background: #39FF14 !important;
         color: #000 !important;
+        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 1. 資料庫 (依據第1課內容) ---
-# 
 VOCABULARY = [
     {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah"},
     {"amis": "malalokay", "zh": "勤勞的", "emoji": "💪", "root": "lalok"},
@@ -110,11 +147,10 @@ VOCABULARY = [
     {"amis": "matefaday", "zh": "掉下來的", "emoji": "🍂", "root": "tefad"},
 ]
 
-# [cite: 73, 76, 79]
 SENTENCES = [
-    {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... (A是B) "},
-    {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都) "},
-    {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "處置焦點：強調飯粒(posak) "},
+    {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... (A是B)"},
+    {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都)"},
+    {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點：強調飯粒(posak)"},
 ]
 
 STORY = """
@@ -125,7 +161,7 @@ Ma'araw nangra ko matefaday a posak i lalan.
 Liliden nangra kora posak a panokay.
 Mafana' a mapapadang ko kakonah.
 Saka, matatodong a minanam kita to lalok no kakonah.
-""" # [cite: 56-62]
+"""
 
 STORY_ZH = """
 所謂的螞蟻，是非常勤勞的昆蟲。
@@ -135,12 +171,11 @@ STORY_ZH = """
 牠們便將那飯粒搬運回家。
 螞蟻懂得互相幫助。
 所以，我們值得學習螞蟻的勤勞。
-""" # [cite: 64-70]
+"""
 
 # --- 2. 語音與工具 ---
 def play_audio(text):
     try:
-        # 使用印尼語近似發音
         tts = gTTS(text=text, lang='id') 
         fp = BytesIO()
         tts.write_to_fp(fp)
@@ -158,10 +193,11 @@ st.markdown("""
     <div class="header-container">
         <div class="main-title">O KAKONAH</div>
         <div style="color: #39FF14; letter-spacing: 5px; font-weight:bold;">第 1 課：螞蟻</div>
-        <div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮 </div>
+        <div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div>
     </div>
     """, unsafe_allow_html=True)
 
+# Tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 課文朗讀", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
 with tab1:
@@ -178,7 +214,6 @@ with tab1:
 
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
-    # 
     for v in VOCABULARY:
         cols = st.columns([0.8, 0.2])
         with cols[0]:
@@ -196,7 +231,6 @@ with tab2:
 
 with tab3:
     st.markdown("### // 語法解碼：句型結構")
-    # [cite: 71]
     for s in SENTENCES:
         st.markdown(f"""
         <div class="grammar-box">
@@ -219,9 +253,8 @@ with tab4:
         current_q = st.session_state.quiz_pool[st.session_state.step]
         st.markdown(f"#### Q{st.session_state.step + 1}: 請選擇「<span style='color:#39FF14'>{current_q['zh']}</span>」的阿美語", unsafe_allow_html=True)
         
-        # 選項邏輯
         options = [current_q['amis']] + [v['amis'] for v in random.sample(VOCABULARY, 3) if v['amis'] != current_q['amis']]
-        options = options[:3] # 取3個選項
+        options = options[:3] 
         random.shuffle(options)
         
         cols = st.columns(3)
@@ -250,4 +283,3 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 6.4 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
-
