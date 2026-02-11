@@ -14,13 +14,22 @@ st.set_page_config(
 )
 
 # --- 1. 資料庫 (第 1 課：Ira to kako a minokay) ---
-# 擴充詞彙庫以支援所有句子的 Tooltip
+# 關鍵修復：擴充字典，確保課文中每一個字都能查到翻譯
 VOCAB_MAP = {
     "ina": "媽媽", "ira": "有/在/到達", "to": "了(完成貌)", "kako": "我", "a": "連綴詞",
     "minokay": "回家", "kiso": "你", "macahiw": "肚子餓", "o": "是/主格",
     "maan": "什麼", "ko": "主格標記", "kaolahan": "喜歡的/想要的", "iso": "你的",
     "mangalay": "想要", "komaen": "吃", "konga": "地瓜", "hay": "好/是的",
-    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)"
+    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)",
+    "tada": "非常/真正", "malalokay": "勤勞的", "fao": "昆蟲",
+    "ano": "當...時", "matayal": "工作", "cangra": "他們", "saheto": "全部/都",
+    "foloday": "一群的/同伴", "masadak": "出來", "caay": "不", "ka": "否定連接",
+    "pahanhan": "休息", "tayal": "工作", "nangra": "他們的", 
+    "ma'araw": "看見", "matefaday": "掉下來的", "posak": "飯粒", "lalan": "路",
+    "liliden": "搬運", "kora": "那個", "panokay": "帶回家",
+    "mafana'": "懂得/會", "mapapadang": "互相幫忙", "saka": "所以",
+    "matatodong": "值得/剛好", "minanam": "學習", "kita": "我們(包含)", "lalok": "勤勞",
+    "no": "的(屬格)"
 }
 
 VOCABULARY = [
@@ -32,7 +41,6 @@ VOCABULARY = [
     {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
 ]
 
-# 修正：更新為您指定的詳細語法分析內容
 SENTENCES = [
     {
         "amis": "Ina, ira to kako a minokay.", 
@@ -63,7 +71,7 @@ SENTENCES = [
     }
 ]
 
-# 課文數據
+# 課文數據 (修正版：7句獨立)
 STORY_DATA = [
     {"amis": "O kakonah hananay i, o tada malalokay a fao.", "zh": "所謂的螞蟻，是非常勤勞的昆蟲。"},
     {"amis": "Ano matayal cangra i, saheto o foloday a masadak.", "zh": "當牠們工作時，都是成群結隊地出來。"},
@@ -89,6 +97,7 @@ st.markdown("""
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
     
+    /* 中文翻譯區塊樣式 */
     .zh-translation-block {
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
@@ -102,13 +111,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.5) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.6) ---
 def get_html_card(item, type="word"):
     # 設置動態 padding
-    # 課文區塊 (full_amis_block) 需要 110px 來防止 Tooltip 被切掉 (下移 1公分)
-    # 句型卡 (sentence) 需要 60px
     pt = "110px" if type == "full_amis_block" else "60px"
-    mt = "-60px" if type == "full_amis_block" else "-30px" # 負邊距補償，避免下方空太大
+    mt = "-60px" if type == "full_amis_block" else "-30px" 
 
     style_block = f"""<style>
         body {{ background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: {pt}; overflow-x: hidden; }}
@@ -150,6 +157,7 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
+        # 關鍵修復：這裡確保每個單字都生成 interactive-word span
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -160,6 +168,7 @@ def get_html_card(item, type="word"):
                 translation = VOCAB_MAP.get(clean_word, "")
                 js_word = clean_word.replace("'", "\\'") 
                 
+                # 無論有無翻譯，都生成 span 以支援點擊發音；有翻譯則加 Tooltip
                 if translation:
                     chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
                 else:
@@ -178,6 +187,7 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
+        # 關鍵修復：Tab 3 的互動邏輯也一併恢復
         s = item
         words = s['amis'].split()
         parts = []
@@ -193,7 +203,6 @@ def get_html_card(item, type="word"):
             parts.append(chunk)
             
         full_js = s['amis'].replace("'", "\\'")
-        # 在這裡，padding-top 設為 60px，所以 margin-top 設為 -30px 拉回位置
         body = f'<div style="font-size: 18px; line-height: 1.6; margin-top: -30px;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
@@ -221,7 +230,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：螞蟻 (新版)</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -229,7 +238,7 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
-    # 區塊 1: 阿美語全文 (互動式) - 高度增加到 580px，padding-top 為 110px，解決切頭問題
+    # 區塊 1: 阿美語全文 (互動式) - 高度 580px
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
     components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=580, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -251,9 +260,9 @@ with tab3:
     st.markdown("### // 語法解碼：句型結構")
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
-        # 使用 components.html 確保互動功能存在
+        # 恢復互動卡片
         components.html(get_html_card(s, type="sentence"), height=140)
-        # 修正：補回中文翻譯，並顯示詳細解析
+        # 恢復中文翻譯與解析
         st.markdown(f"""
         <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
         <div style="color:#CCC; font-size:14px; line-height:1.8; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron; font-weight:bold;">ANALYSIS:</span> {s.get('note', '')}</div>
@@ -283,4 +292,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.5 | Visual Adjustments: Padding+110px | Interaction Restored")
+st.caption("SYSTEM VER 8.6 | Full Restoration | Functionality Online")
