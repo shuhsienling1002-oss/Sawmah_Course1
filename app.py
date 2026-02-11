@@ -209,7 +209,7 @@ def play_audio_backend(text):
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">O KAKONAH</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako a minokay</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
@@ -268,3 +268,4 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.3 | Grammar Analysis Module Updated")
+
