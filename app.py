@@ -1,6 +1,5 @@
 import streamlit as st
-import time
-import os
+import streamlit.components.v1 as components
 import random
 import re
 from gtts import gTTS
@@ -13,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS: 賽博龐克視覺 + 互動元件樣式 ---
+# --- CSS: 主程式視覺樣式 (外層 Streamlit) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
@@ -46,11 +45,11 @@ st.markdown("""
         margin-bottom: 5px;
     }
 
-    /* --- Tabs 樣式修正 --- */
+    /* Tabs 修正 */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         background-color: rgba(255, 255, 255, 0.05);
-        color: #FFFFFF !important; /* 強制純白文字 */
+        color: #FFFFFF !important;
         border-radius: 5px 5px 0 0;
         border: 1px solid transparent;
     }
@@ -58,7 +57,7 @@ st.markdown("""
         background-color: rgba(57, 255, 20, 0.1) !important;
         border: 1px solid #39FF14;
         border-bottom: none;
-        color: #39FF14 !important; /* 選中變綠 */
+        color: #39FF14 !important;
         font-weight: bold;
         box-shadow: 0 -5px 10px rgba(57, 255, 20, 0.1);
     }
@@ -67,48 +66,7 @@ st.markdown("""
         background-color: rgba(57, 255, 20, 0.2);
     }
 
-    /* --- 互動式文字 (Interactive Text) --- */
-    .interactive-word {
-        position: relative;
-        display: inline-block;
-        border-bottom: 1px dashed #39FF14; /* 下劃線 */
-        cursor: pointer;
-        margin: 0 4px;
-        transition: 0.3s;
-    }
-    .interactive-word:hover {
-        background-color: rgba(57, 255, 20, 0.2);
-        color: #FFF;
-        text-shadow: 0 0 5px #39FF14;
-    }
-
-    /* Tooltip (懸停提示框) */
-    .interactive-word .tooltip-text {
-        visibility: hidden;
-        min-width: 60px;
-        background-color: #000;
-        color: #39FF14;
-        text-align: center;
-        border: 1px solid #39FF14;
-        border-radius: 6px;
-        padding: 5px 8px;
-        position: absolute;
-        z-index: 10;
-        bottom: 125%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.3s;
-        font-size: 14px;
-        box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
-        white-space: nowrap;
-    }
-    .interactive-word:hover .tooltip-text {
-        visibility: visible;
-        opacity: 1;
-    }
-
-    /* 卡片樣式 */
+    /* 單字卡片 (Tab 2) */
     .word-card {
         background: rgba(20, 30, 20, 0.9);
         border: 1px solid #39FF14;
@@ -144,7 +102,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. 資料庫 (Vocabulary & Sentences) ---
+# --- 1. 資料庫 ---
 VOCAB_MAP = {
     "kakonah": "螞蟻", "hananay": "所謂的", "i": "(語氣)", "o": "是/主格",
     "tada": "非常", "malalokay": "勤勞的", "a": "的/連詞", "fao": "昆蟲",
@@ -194,40 +152,134 @@ STORY_ZH = """
 所以，我們值得學習螞蟻的勤勞。
 """
 
-# --- 2. 核心功能函式 (修正版) ---
-
-def render_interactive_text(text):
-    """將純文本轉換為帶有 Tooltip 和 Inline JS 的 HTML"""
-    words = text.split() 
-    html_parts = []
+# --- 2. 核心技術：獨立沙盒渲染 (Sandboxed HTML Generator) ---
+def get_interactive_html(content_text, is_sentence=False):
+    """
+    生成一個完整的 HTML 頁面字串，包含 CSS 和 JS。
+    這將被放入 iframe 中，確保發音功能不受 Streamlit 限制。
+    """
     
+    # 1. 處理文字，轉為 span 標籤
+    words = content_text.split() 
+    html_parts = []
     for word in words:
         clean_word = re.sub(r'[^\w\']', '', word).lower()
         display_word = word
         translation = VOCAB_MAP.get(clean_word, "")
         
-        # 核心修正：將 JS 邏輯直接寫入 onclick，不依賴外部函數
-        # window.speechSynthesis.cancel() 用於中斷上一句，避免聲音重疊
-        js_code = f"window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance('{clean_word}'); msg.lang='id-ID'; msg.rate=0.9; window.speechSynthesis.speak(msg);"
-        
+        # 生成帶 onclick 的 span
         if translation:
-            html_chunk = f'<span class="interactive-word" onclick="{js_code}">{display_word}<span class="tooltip-text">{translation}</span></span>'
+            chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}<span class="tooltip-text">{translation}</span></span>'
         else:
-            html_chunk = f'<span class="interactive-word" onclick="{js_code}">{display_word}</span>'
-        
-        html_parts.append(html_chunk)
+            chunk = f'<span class="interactive-word" onclick="speak(\'{clean_word}\')">{display_word}</span>'
+        html_parts.append(chunk)
     
-    return " ".join(html_parts)
+    final_content = " ".join(html_parts)
+    
+    # 2. 根據是課文還是句子調整樣式
+    container_style = "line-height: 2.0; font-size: 20px;" if not is_sentence else "line-height: 1.5; font-size: 18px; font-weight: bold;"
 
-def play_audio(text):
-    """後端語音生成 (作為備用或長句播放)"""
+    # 3. 構建完整 HTML 結構
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap" rel="stylesheet">
+        <style>
+            body {{
+                background-color: transparent; /* 透明背景以融合主程式 */
+                color: #ECF0F1;
+                font-family: 'Noto Sans TC', sans-serif;
+                margin: 0;
+                padding: 5px;
+                overflow-x: hidden;
+            }}
+            
+            /* 互動文字樣式 */
+            .interactive-word {{
+                position: relative;
+                display: inline-block;
+                border-bottom: 1px dashed #39FF14;
+                cursor: pointer;
+                margin: 0 4px;
+                transition: 0.3s;
+                color: #EEE;
+            }}
+            .interactive-word:hover {{
+                background-color: rgba(57, 255, 20, 0.2);
+                color: #FFF;
+                text-shadow: 0 0 5px #39FF14;
+            }}
+            
+            /* Tooltip */
+            .interactive-word .tooltip-text {{
+                visibility: hidden;
+                min-width: 60px;
+                background-color: #000;
+                color: #39FF14;
+                text-align: center;
+                border: 1px solid #39FF14;
+                border-radius: 6px;
+                padding: 5px 8px;
+                position: absolute;
+                z-index: 100;
+                bottom: 130%;
+                left: 50%;
+                transform: translateX(-50%);
+                opacity: 0;
+                transition: opacity 0.3s;
+                font-size: 14px;
+                box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+                white-space: nowrap;
+                font-family: sans-serif;
+            }}
+            .interactive-word:hover .tooltip-text {{
+                visibility: visible;
+                opacity: 1;
+            }}
+            
+            /* 容器樣式 */
+            .content-box {{
+                {container_style}
+            }}
+        </style>
+        <script>
+            function speak(text) {{
+                // 停止當前語音
+                window.speechSynthesis.cancel();
+                
+                var msg = new SpeechSynthesisUtterance();
+                msg.text = text;
+                msg.lang = 'id-ID'; // 使用印尼語近似阿美語
+                msg.rate = 0.9;
+                
+                // 錯誤處理
+                msg.onerror = function(event) {{
+                    console.error('Speech error:', event);
+                }};
+                
+                window.speechSynthesis.speak(msg);
+            }}
+        </script>
+    </head>
+    <body>
+        <div class="content-box">
+            {final_content}
+        </div>
+    </body>
+    </html>
+    """
+    return full_html
+
+def play_audio_backup(text):
+    """後端語音 (備用)"""
     try:
         tts = gTTS(text=text, lang='id') 
         fp = BytesIO()
         tts.write_to_fp(fp)
         st.audio(fp, format='audio/mp3')
     except:
-        st.caption("🔊 語音模組連線中...")
+        st.caption("🔊 連線中...")
 
 def init_quiz():
     st.session_state.quiz_pool = random.sample(VOCABULARY, 3)
@@ -247,67 +299,82 @@ st.markdown("""
 
 tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
 
-# --- Tab 1: 互動課文 ---
+# --- Tab 1: 互動課文 (使用 iframe) ---
 with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
-    st.caption("👆 滑鼠懸停單字可看翻譯，點擊單字可聽發音")
+    st.caption("👆 請嘗試點擊下方綠色虛線單字，可聽到發音")
     
-    interactive_html = render_interactive_text(STORY.replace('\n', ' <br> '))
+    # 創建一個獨立的 iframe 組件
+    # height 設定為 300 確保足夠顯示，scrolling=True 允許捲動
+    html_code = get_interactive_html(STORY.replace('\n', ' <br> '))
     
+    # 渲染 iframe
     st.markdown(f"""
-    <div style="padding:20px; border-left:4px solid #39FF14; background:rgba(20,20,20,0.5); font-size:20px; line-height:2.0; color:#EEE;">
-        {interactive_html}
-    </div>
+    <div style="padding:10px; border-left:4px solid #39FF14; background:rgba(20,20,20,0.5);">
     """, unsafe_allow_html=True)
+    
+    components.html(html_code, height=300, scrolling=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")
     with st.expander("查看中文全文翻譯"):
         st.markdown(f"<p style='color:#AAA;'>{STORY_ZH.replace(chr(10), '<br>')}</p>", unsafe_allow_html=True)
-    
-    if st.button("🔊 播放全課文 (整段)"):
-        play_audio(STORY.replace('\n', ' '))
 
 # --- Tab 2: 核心單字 ---
 with tab2:
     st.markdown("### // 數據掃描：原子單字")
     for v in VOCABULARY:
         cols = st.columns([0.8, 0.2])
-        # 修正：單字卡片也使用 Inline JS
-        js_code_card = f"window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance('{v['amis']}'); msg.lang='id-ID'; msg.rate=0.9; window.speechSynthesis.speak(msg);"
-        
         with cols[0]:
-            st.markdown(f"""
-            <div class="word-card">
-                <span class="root-tag">ROOT: {v['root']}</span>
-                <div class="amis-text" style="cursor:pointer;" onclick="{js_code_card}">
-                    {v['emoji']} {v['amis']}
+            # 這裡我們使用 components.html 來渲染單個單字的互動
+            # 注意：大量 iframe 可能影響效能，但這是保證發音最穩的方法
+            # 為了美觀，我們手動將 iframe 嵌入到卡片設計中
+            
+            card_html = get_interactive_html(v['amis'], is_sentence=True)
+            
+            with st.container():
+                st.markdown(f"""
+                <div class="word-card">
+                    <span class="root-tag">ROOT: {v['root']}</span>
+                    <div style="margin-bottom:5px;">{v['emoji']}</div>
+                """, unsafe_allow_html=True)
+                
+                # 嵌入小 iframe
+                components.html(card_html, height=40)
+                
+                st.markdown(f"""
+                    <div class="zh-text">{v['zh']}</div>
                 </div>
-                <div class="zh-text">{v['zh']}</div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
         with cols[1]:
-            st.write("") 
+            st.write("")
+            # 備用按鈕 (後端發音)
             if st.button("🔊", key=f"voc_{v['amis']}"):
-                play_audio(v['amis'])
+                play_audio_backup(v['amis'])
 
 # --- Tab 3: 句型解析 ---
 with tab3:
     st.markdown("### // 語法解碼：句型結構")
-    for s in SENTENCES:
-        interactive_sentence = render_interactive_text(s['amis'])
+    for i, s in enumerate(SENTENCES):
+        # 生成句子的互動 HTML
+        sent_html = get_interactive_html(s['amis'], is_sentence=True)
+        
         st.markdown(f"""
         <div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; margin-bottom:15px; border-radius: 5px;">
-            <div style="color:#39FF14; font-size:18px; font-weight:bold; margin-bottom:5px;">
-                >> {interactive_sentence}
-            </div>
+        """, unsafe_allow_html=True)
+        
+        # 顯示互動句子
+        components.html(sent_html, height=60)
+        
+        st.markdown(f"""
             <div style="color:#FFF; margin-bottom:8px;">{s['zh']}</div>
             <div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;">
                 <span style="color: #39FF14; font-weight: bold; font-family: 'Orbitron';">ANALYSIS:</span> {s['note']}
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("唸句型", key=f"sen_{s['amis'][:5]}"):
-            play_audio(s['amis'])
 
 # --- Tab 4: 實戰測驗 ---
 with tab4:
@@ -353,4 +420,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 6.6 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
+st.caption("SYSTEM VER 6.7 | Sandbox Protocol Active | Audio Engine Online")
