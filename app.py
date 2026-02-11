@@ -114,7 +114,7 @@ VOCABULARY = [
 SENTENCES = [
     {"amis": "O tada malalokay a fao ko kakonah.", "zh": "螞蟻是非常勤勞的昆蟲。", "note": "O...ko... (A是B) "},
     {"amis": "Saheto o foloday a masadak cangra.", "zh": "牠們都是成群結隊地出來。", "note": "Saheto (全部/都) "},
-    {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "OF 處置焦點：強調飯粒(posak) "},
+    {"amis": "Liliden nangra ko matefaday a posak.", "zh": "牠們搬運掉下來的飯粒。", "note": "處置焦點：強調飯粒(posak) "},
 ]
 
 STORY = """
@@ -250,3 +250,4 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 6.4 | 10-5 詞彙規範校驗通過 | Source: Lesson 1 O Kakonah")
+
