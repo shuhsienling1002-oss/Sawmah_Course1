@@ -119,7 +119,7 @@ def get_html_card(item, type="word"):
 def generate_quiz():
     questions = []
     
-    # Type 1: 聽力 (Listen)
+    # Type 1: 聽力
     q1 = random.choice(VOCABULARY)
     q1_opts = [q1['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q1], 2)]
     random.shuffle(q1_opts)
@@ -132,7 +132,7 @@ def generate_quiz():
         "options": q1_opts
     })
     
-    # Type 2: 翻譯 (Translate)
+    # Type 2: 翻譯
     q2 = random.choice(VOCABULARY)
     q2_opts = [q2['amis']] + [v['amis'] for v in random.sample([x for x in VOCABULARY if x != q2], 2)]
     random.shuffle(q2_opts)
@@ -144,12 +144,11 @@ def generate_quiz():
         "options": q2_opts
     })
     
-    # Type 3: 詞根 (Root Logic) - 確保詞根與單字不同，更有挑戰性
+    # Type 3: 詞根
     root_candidates = [v for v in VOCABULARY if v['root'] != v['amis']]
-    if not root_candidates: root_candidates = VOCABULARY # Fallback
+    if not root_candidates: root_candidates = VOCABULARY
     q3 = random.choice(root_candidates)
     
-    # 詞根干擾項
     other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q3['root']]))
     if len(other_roots) < 2: other_roots = ["fake1", "fake2"]
     q3_opts = [q3['root']] + random.sample(other_roots, 2)
@@ -164,9 +163,8 @@ def generate_quiz():
         "note": f"詞根意思：{q3['root_zh']}"
     })
     
-    # Type 4: 句型克漏字 (Cloze)
+    # Type 4: 句型克漏字
     q4 = random.choice(SENTENCES)
-    # 找句子裡有的單字當挖空
     valid_words = [w for w in q4['amis'].split() if re.sub(r"[^\w']", "", w).lower() in [v['amis'] for v in VOCABULARY]]
     if valid_words:
         target_w = random.choice(valid_words)
@@ -184,7 +182,6 @@ def generate_quiz():
             "options": q4_opts
         })
     else:
-        # Fallback to listening sentence
         questions.append({
             "type": "listen_sent",
             "tag": "🔊 語感聽解",
@@ -195,7 +192,7 @@ def generate_quiz():
         })
 
     random.shuffle(questions)
-    return questions[:5] # 隨機選題，保持新鮮感
+    return questions[:5] 
 
 def play_audio(text):
     try:
@@ -231,6 +228,7 @@ with tab3:
         st.markdown(f"""<div style="color:#FFF; margin-bottom:8px;">{s['zh']}</div><div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron;">NOTE:</span> {s.get('note', '')}</div></div>""", unsafe_allow_html=True)
 
 with tab4:
+    # 初始化測驗
     if 'quiz_questions' not in st.session_state:
         st.session_state.quiz_questions = generate_quiz()
         st.session_state.quiz_step = 0
@@ -239,7 +237,7 @@ with tab4:
     if st.session_state.quiz_step < len(st.session_state.quiz_questions):
         q = st.session_state.quiz_questions[st.session_state.quiz_step]
         
-        # 顯示題目卡
+        # 顯示題目
         st.markdown(f"""
         <div class="quiz-card">
             <div style="margin-bottom:10px;"><span class="quiz-tag">{q['tag']}</span> <span style="color:#888;">Q{st.session_state.quiz_step + 1}</span></div>
@@ -247,23 +245,19 @@ with tab4:
         </div>
         """, unsafe_allow_html=True)
         
-        # 播放音檔 (如果有)
+        # 播放音檔
         if 'audio' in q:
             play_audio(q['audio'])
 
-        # 選項
-        cols = st.columns(3)
-        # 如果是聽力題且選項長度不一，可以改為垂直排列，這裡預設 3 欄
+        # 選項渲染 (關鍵修復：這裡不執行 random.shuffle)
         opts = q['options']
-        random.shuffle(opts) # 再洗一次確保位置隨機
         
+        cols = st.columns(3)
         for i, opt in enumerate(opts):
-            # 如果選項文字太長，自動換行
             col_idx = i % 3
             with cols[col_idx]:
                 if st.button(opt, key=f"q_{st.session_state.quiz_step}_{i}"):
-                    # 判斷對錯
-                    # 處理 clean_word 可能的大小寫問題
+                    # 答案比對 (忽略大小寫)
                     if opt.lower() == q['correct'].lower() or opt == q['correct']:
                         st.success("通過 (Access Granted)")
                         st.session_state.quiz_score += 1
@@ -282,4 +276,4 @@ with tab4:
             st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 7.3 | Hybrid Quiz Engine Loaded | Diversity Protocol Active")
+st.caption("SYSTEM VER 7.4 | Quantum Shuffle Bug Fixed | Logic Stabilized")
