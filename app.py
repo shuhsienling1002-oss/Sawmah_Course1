@@ -219,7 +219,7 @@ with tab1:
     """, unsafe_allow_html=True)
 
 with tab2:
-    st.markdown("### // 數據掃描：原子單字")
+    st.markdown("### // 單字練習")
     for v in VOCABULARY:
         components.html(get_html_card(v, type="word"), height=140)
 
@@ -259,6 +259,7 @@ with tab4:
 
 st.markdown("---")
 st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
+
 
 
 
