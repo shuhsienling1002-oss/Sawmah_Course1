@@ -83,11 +83,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v8.0) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v8.1) ---
 def get_html_card(item, type="word"):
-    # CSS: 關鍵修正 padding-top: 70px 解決第一行 Tooltip 被切掉的問題
+    # 關鍵修正：padding-top: 100px (確保 Tooltip 不被切掉)，並調整 margin 補償
     style_block = """<style>
-        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 70px; overflow-x: hidden; }
+        body { background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: 100px; overflow-x: hidden; }
+        
         .interactive-word { position: relative; display: inline-block; border-bottom: 1px dashed #39FF14; cursor: pointer; margin: 0 3px; color: #EEE; transition: 0.3s; font-size: 19px; }
         .interactive-word .tooltip-text { visibility: hidden; min-width: 60px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; }
         .interactive-word:hover .tooltip-text { visibility: visible; opacity: 1; }
@@ -95,13 +96,14 @@ def get_html_card(item, type="word"):
         .play-btn-inline { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }
         .play-btn-inline:hover { background: #39FF14; color: #000; transform: scale(1.1); }
         
-        .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -30px; height: 100px; box-sizing: border-box; }
+        /* 單字卡樣式 - 補償上方 padding */
+        .word-card-static { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: -70px; height: 100px; box-sizing: border-box; }
         .wc-root-tag { font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         .wc-amis { color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }
         .wc-zh { color: #FFF; font-size: 16px; font-weight: bold; }
         .play-btn-large { background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }
         
-        /* 阿美語全文區塊樣式 */
+        /* 阿美語全文區塊樣式 - 補償上方 padding */
         .amis-full-block { line-height: 2.2; font-size: 18px; margin-top: -30px; }
         .sentence-row { margin-bottom: 12px; display: block; }
     </style>
@@ -152,14 +154,13 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
-        # 修復：恢復詳細的迴圈邏輯，確保只有有翻譯時才顯示 Tooltip，並修復 JS 轉義
         s = item
         words = s['amis'].split()
         parts = []
         for w in words:
             clean_word = re.sub(r"[^\w']", "", w).lower()
             translation = VOCAB_MAP.get(clean_word, "")
-            js_word = clean_word.replace("'", "\\'") # 確保喉塞音不報錯
+            js_word = clean_word.replace("'", "\\'") 
             
             if translation:
                 chunk = f'<span class="interactive-word" onclick="speak(\'{js_word}\')">{w}<span class="tooltip-text">{translation}</span></span>'
@@ -168,7 +169,8 @@ def get_html_card(item, type="word"):
             parts.append(chunk)
             
         full_js = s['amis'].replace("'", "\\'")
-        body = f'<div style="font-size: 18px; line-height: 1.6;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
+        # 在 iframe 裡只顯示互動阿美語句子 + 按鈕，中文顯示在 iframe 外的 markdown
+        body = f'<div style="font-size: 18px; line-height: 1.6; margin-top: -30px;">{" ".join(parts)}</div><button style="margin-top:10px; background:rgba(57, 255, 20, 0.1); border:1px solid #39FF14; color:#39FF14; padding:5px 12px; border-radius:4px; cursor:pointer;" onclick="speak(`{full_js}`)">▶ 播放整句</button>'
 
     return header + body + "</body></html>"
 
@@ -203,9 +205,9 @@ with tab1:
     st.markdown("### // 沉浸模式 (Interactive Immersion)")
     st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
     
-    # 區塊 1: 阿美語全文 (互動式)
+    # 區塊 1: 阿美語全文 (互動式) - 增加高度適應 padding
     st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
-    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
+    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=550, scrolling=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     # 區塊 2: 中文全文 (靜態文字)
@@ -226,7 +228,12 @@ with tab3:
     for s in SENTENCES:
         st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
         components.html(get_html_card(s, type="sentence"), height=140)
-        st.markdown(f"""<div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px; margin-top:5px;"><span style="color:#39FF14; font-family:Orbitron;">NOTE:</span> {s.get('note', '')}</div></div>""", unsafe_allow_html=True)
+        # 修正：將消失的中文翻譯加回來，放在 NOTE 上方
+        st.markdown(f"""
+        <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
+        <div style="color:#CCC; font-size:13px; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron;">NOTE:</span> {s.get('note', '')}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 with tab4:
     if 'quiz_questions' not in st.session_state:
@@ -251,4 +258,4 @@ with tab4:
         if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
 
 st.markdown("---")
-st.caption("SYSTEM VER 8.0 | Final Polish: Tooltip & Interaction Restored")
+st.caption("SYSTEM VER 8.1 | Final Layout: Padding Fixed & ZH-Translation Restored")
