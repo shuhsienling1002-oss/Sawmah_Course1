@@ -14,7 +14,6 @@ st.set_page_config(
 )
 
 # --- 1. 資料庫 (第 1 課：O kakonah) ---
-# [架構師筆記] 這裡映射了所有單字及其翻譯，用於 Tooltip 懸浮顯示
 VOCAB_MAP = {
     "o": "主格/焦點標記", "mafoloday": "一群的/群聚的", "a": "連綴詞", "kakonah": "螞蟻", 
     "kami": "我們(排除式)", "malalok": "勤勞的", "matayal": "工作", 
@@ -24,7 +23,6 @@ VOCAB_MAP = {
     "malalokay": "勤勞的(名詞化)"
 }
 
-# [架構師筆記] 核心單字卡，包含詞根 (Root) 邏輯，符合 EdTech-CRF 規範
 VOCABULARY = [
     {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah", "root_zh": "螞蟻"},
     {"amis": "mafoloday", "zh": "一群的/群聚", "emoji": "👯‍♂️", "root": "folod", "root_zh": "群/堆"},
@@ -38,7 +36,6 @@ VOCABULARY = [
     {"amis": "panokay", "zh": "帶回/送回", "emoji": "🏠", "root": "nokay", "root_zh": "回"},
 ]
 
-# [架構師筆記] 句型分析，內嵌 HTML 格式的語法筆記
 SENTENCES = [
     {
         "amis": "O mafoloday a kakonah kami.", 
@@ -98,7 +95,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
     .stApp { background-color: #0a0e05; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; }
     
-    /* 霓虹綠邊框容器 */
     .header-container { 
         background: rgba(0, 20, 0, 0.8); 
         border: 2px solid #39FF14; 
@@ -112,19 +108,15 @@ st.markdown("""
     .main-title { font-family: 'Orbitron', sans-serif; color: #39FF14; font-size: 36px; text-shadow: 0 0 10px #39FF14; margin-bottom: 5px; }
     .sub-title { color: #FFF; font-size: 14px; letter-spacing: 2px; opacity: 0.8; }
     
-    /* Tab 樣式客製化 */
     .stTabs [data-baseweb="tab"] { color: #FFFFFF !important; background-color: rgba(255, 255, 255, 0.05); }
     .stTabs [aria-selected="true"] { border: 1px solid #39FF14; color: #39FF14 !important; font-weight: bold; }
     
-    /* 按鈕樣式 */
     .stButton>button { border: 1px solid #39FF14 !important; background: transparent !important; color: #39FF14 !important; width: 100%; border-radius: 5px; transition: 0.3s; }
     .stButton>button:hover { background: #39FF14 !important; color: #000 !important; box-shadow: 0 0 15px #39FF14; }
     
-    /* 測驗卡片 */
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
     
-    /* 翻譯區塊 */
     .zh-translation-block {
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
@@ -140,7 +132,6 @@ st.markdown("""
 
 # --- 3. 核心技術：沙盒渲染引擎 (v9.1 - Optimized) ---
 def get_html_card(item, type="word"):
-    # 設定：full_amis_block 依然保持 100px padding (防切頭)，下方負邊距拉近
     pt = "100px" if type == "full_amis_block" else "80px"
     mt = "-40px" if type == "full_amis_block" else "-30px" 
 
@@ -154,7 +145,6 @@ def get_html_card(item, type="word"):
         .play-btn-inline {{ background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }}
         .play-btn-inline:hover {{ background: #39FF14; color: #000; transform: scale(1.1); }}
         
-        /* 單字卡樣式 */
         .word-card-static {{ background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: {mt}; height: 100px; box-sizing: border-box; }}
         .wc-root-tag {{ font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-right: 5px; }}
         .wc-amis {{ color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }}
@@ -162,7 +152,6 @@ def get_html_card(item, type="word"):
         .play-btn-large {{ background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; transition: 0.2s; }}
         .play-btn-large:hover {{ background: #39FF14; color: #000; }}
         
-        /* 阿美語全文區塊樣式 */
         .amis-full-block {{ line-height: 2.2; font-size: 18px; margin-top: {mt}; }}
         .sentence-row {{ margin-bottom: 12px; display: block; }}
     </style>
@@ -185,7 +174,6 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
-        # 互動課文區塊
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -214,7 +202,6 @@ def get_html_card(item, type="word"):
         body = f"""<div class="amis-full-block">{''.join(all_sentences_html)}</div>"""
     
     elif type == "sentence": 
-        # 句型解析區塊
         s = item
         words = s['amis'].split()
         parts = []
@@ -234,7 +221,7 @@ def get_html_card(item, type="word"):
 
     return header + body + "</body></html>"
 
-# --- 4. 測驗生成引擎 (Logic Hardened) ---
+# --- 4. 測驗生成引擎 ---
 def generate_quiz():
     questions = []
     
@@ -256,10 +243,10 @@ def generate_quiz():
     random.shuffle(q3_opts)
     questions.append({"type": "trans_a2z", "tag": "🔄 阿翻中", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的意思是？", "correct": q3['zh'], "options": q3_opts})
 
-    # 4. 詞根偵探 (Root Logic)
+    # 4. 詞根偵探
     q4 = random.choice(VOCABULARY)
     other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q4['root']]))
-    if len(other_roots) < 2: other_roots += ["roma", "lalan", "cidal"] # Fallback
+    if len(other_roots) < 2: other_roots += ["roma", "lalan", "cidal"]
     q4_opts = [q4['root']] + random.sample(other_roots, 2)
     random.shuffle(q4_opts)
     questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q4['amis']}</span> 的詞根是？", "correct": q4['root'], "options": q4_opts, "note": f"詞根意思：{q4['root_zh']}"})
@@ -274,7 +261,7 @@ def generate_quiz():
     random.shuffle(q6_opts)
     questions.append({"type": "sent_trans", "tag": "📝 句型翻譯", "text": f"請選擇中文「<span style='color:#39FF14'>{q6['zh']}</span>」對應的阿美語", "correct": q6['amis'], "options": q6_opts})
 
-    # 7. 克漏字 (Cloze)
+    # 7. 克漏字
     q7 = random.choice(STORY_DATA)
     words = q7['amis'].split()
     valid_indices = []
@@ -293,7 +280,7 @@ def generate_quiz():
         q_text = " ".join(words_display)
         
         correct_ans = target_clean
-        distractors = [k for k in VOCAB_MAP.keys() if k != correct_ans and len(k) > 2] # 避免選到太短的干擾項
+        distractors = [k for k in VOCAB_MAP.keys() if k != correct_ans and len(k) > 2]
         if len(distractors) < 2: distractors += ["kako", "ira"]
         opts = [correct_ans] + random.sample(distractors, 2)
         random.shuffle(opts)
@@ -302,15 +289,12 @@ def generate_quiz():
     else:
         questions.append(questions[0]) 
 
-    # 8. 補一題
     questions.append(random.choice(questions[:4])) 
-
     random.shuffle(questions)
     return questions
 
 def play_audio_backend(text):
     try:
-        # 使用印尼語 (id) 近似阿美語發音
         tts = gTTS(text=text, lang='id'); fp = BytesIO(); tts.write_to_fp(fp); st.audio(fp, format='audio/mp3')
     except: pass
 
@@ -323,4 +307,67 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["🐝 互動課文", "📕 核心單字", "🧬 
+# [修復] 使用多行列表格式，避免 SyntaxError
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🐝 互動課文", 
+    "📕 核心單字", 
+    "🧬 句型解析", 
+    "⚔️ 實戰測驗"
+])
+
+with tab1:
+    st.markdown("### // 文章閱讀")
+    st.caption("👆 點擊單字可聽發音並查看翻譯")
+    
+    st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
+    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
+    st.markdown(f"""
+    <div class="zh-translation-block">
+        {zh_content}
+    </div>
+    """, unsafe_allow_html=True)
+
+with tab2:
+    st.markdown("### // 單字與詞根")
+    for v in VOCABULARY:
+        components.html(get_html_card(v, type="word"), height=150)
+
+with tab3:
+    st.markdown("### // 語法結構分析")
+    for s in SENTENCES:
+        st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
+        components.html(get_html_card(s, type="sentence"), height=160)
+        st.markdown(f"""
+        <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
+        <div style="color:#CCC; font-size:14px; line-height:1.8; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron; font-weight:bold;">ANALYSIS:</span> {s.get('note', '')}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+with tab4:
+    if 'quiz_questions' not in st.session_state:
+        st.session_state.quiz_questions = generate_quiz()
+        st.session_state.quiz_step = 0; st.session_state.quiz_score = 0
+    
+    if st.session_state.quiz_step < len(st.session_state.quiz_questions):
+        q = st.session_state.quiz_questions[st.session_state.quiz_step]
+        st.markdown(f"""<div class="quiz-card"><div style="margin-bottom:10px;"><span class="quiz-tag">{q['tag']}</span> <span style="color:#888;">Q{st.session_state.quiz_step + 1}</span></div><div style="font-size:18px; color:#FFF; margin-bottom:10px;">{q['text']}</div></div>""", unsafe_allow_html=True)
+        if 'audio' in q: play_audio_backend(q['audio'])
+        opts = q['options']; cols = st.columns(min(len(opts), 3))
+        for i, opt in enumerate(opts):
+            with cols[i % 3]:
+                if st.button(opt, key=f"q_{st.session_state.quiz_step}_{i}"):
+                    if opt.lower() == q['correct'].lower():
+                        st.success("✅ 正確 (Correct)"); st.session_state.quiz_score += 1
+                    else:
+                        st.error(f"❌ 錯誤 - 正解: {q['correct']}"); 
+                        if 'note' in q: st.info(q['note'])
+                    time.sleep(1.5); st.session_state.quiz_step += 1; st.rerun()
+    else:
+        st.markdown(f"""<div style="text-align:center; padding:30px; border:2px solid #39FF14; background:rgba(57,255,20,0.1);"><h2 style="color:#39FF14">MISSION COMPLETE</h2><p>得分: {st.session_state.quiz_score} / {len(st.session_state.quiz_questions)}</p></div>""", unsafe_allow_html=True)
+        if st.button("🔄 重新挑戰 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
+
+st.markdown("---")
+st.caption("Powered by Code-CRF v6.4 | Architecture: Chief Architect")
