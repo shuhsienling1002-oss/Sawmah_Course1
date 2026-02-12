@@ -6,85 +6,125 @@ import time
 from gtts import gTTS
 from io import BytesIO
 
-# --- 0. 系統配置 ---
+# --- 0. 系統配置 (System Configuration) ---
 st.set_page_config(
-    page_title="Ira to kako a minokay - 我回來了", 
-    page_icon="🏠", 
+    page_title="O kakonah - 螞蟻之歌", 
+    page_icon="🐜", 
     layout="centered"
 )
 
-# --- 1. 資料庫 (第 1 課：Ira to kako a minokay) ---
+# --- 1. 資料庫 (第 1 課：O kakonah) ---
+# [架構師筆記] 這裡映射了所有單字及其翻譯，用於 Tooltip 懸浮顯示
 VOCAB_MAP = {
-    "ina": "媽媽", "ira": "有/在/到達", "to": "了(完成貌)", "kako": "我", "a": "連綴詞",
-    "minokay": "回家", "kiso": "你", "macahiw": "肚子餓", "o": "是/主格",
-    "maan": "什麼", "ko": "主格標記", "kaolahan": "喜歡的/想要的", "iso": "你的",
-    "mangalay": "想要", "komaen": "吃", "konga": "地瓜", "hay": "好/是的",
-    "i": "在(介係詞)", "parad": "桌子/長凳", "alaen": "拿(祈使/被拿)"
+    "o": "主格/焦點標記", "mafoloday": "一群的/群聚的", "a": "連綴詞", "kakonah": "螞蟻", 
+    "kami": "我們(排除式)", "malalok": "勤勞的", "matayal": "工作", 
+    "matefaday": "掉落的", "i": "在/話題標記", "sasera": "地面/地板", 
+    "posak": "飯粒", "ato": "和/與", "fao": "蟲子", 
+    "liliden": "搬運(被動)", "niyam": "我們(屬格)", "panokay": "帶回家",
+    "malalokay": "勤勞的(名詞化)"
 }
 
+# [架構師筆記] 核心單字卡，包含詞根 (Root) 邏輯，符合 EdTech-CRF 規範
 VOCABULARY = [
-    {"amis": "minokay", "zh": "回家/回來", "emoji": "🏠", "root": "nokay", "root_zh": "回家"},
-    {"amis": "macahiw", "zh": "肚子餓了", "emoji": "🤤", "root": "cahiw", "root_zh": "餓"},
-    {"amis": "kaolahan", "zh": "所喜愛的", "emoji": "💖", "root": "olah", "root_zh": "喜愛"},
-    {"amis": "konga", "zh": "地瓜", "emoji": "🍠", "root": "konga", "root_zh": "地瓜"},
-    {"amis": "parad", "zh": "桌子/長凳", "emoji": "🪑", "root": "parad", "root_zh": "平台"},
-    {"amis": "ala", "zh": "取得/拿取", "emoji": "🖐️", "root": "ala", "root_zh": "拿"},
+    {"amis": "kakonah", "zh": "螞蟻", "emoji": "🐜", "root": "kakonah", "root_zh": "螞蟻"},
+    {"amis": "mafoloday", "zh": "一群的/群聚", "emoji": "👯‍♂️", "root": "folod", "root_zh": "群/堆"},
+    {"amis": "malalok", "zh": "勤勞", "emoji": "💪", "root": "lalok", "root_zh": "勤勞"},
+    {"amis": "matayal", "zh": "工作", "emoji": "🛠️", "root": "tayal", "root_zh": "工作"},
+    {"amis": "matefaday", "zh": "掉落的", "emoji": "📉", "root": "tefad", "root_zh": "掉落"},
+    {"amis": "sasera", "zh": "地面", "emoji": "🟫", "root": "sera", "root_zh": "土/地"},
+    {"amis": "posak", "zh": "飯粒", "emoji": "🍚", "root": "posak", "root_zh": "散落的穀粒"},
+    {"amis": "fao", "zh": "蟲子", "emoji": "🐛", "root": "fao", "root_zh": "蟲"},
+    {"amis": "liliden", "zh": "搬運/拖", "emoji": "🏋️", "root": "lilid", "root_zh": "拖/帶"},
+    {"amis": "panokay", "zh": "帶回/送回", "emoji": "🏠", "root": "nokay", "root_zh": "回"},
 ]
 
+# [架構師筆記] 句型分析，內嵌 HTML 格式的語法筆記
 SENTENCES = [
     {
-        "amis": "Ina, ira to kako a minokay.", 
-        "zh": "媽媽，我回來了。", 
+        "amis": "O mafoloday a kakonah kami.", 
+        "zh": "我們是一群螞蟻。", 
         "note": """
-        <br><b>ira</b>：存在動詞（在此指到達/在現場）。
-        <br><b>to</b>：完成貌助詞，表示狀態已改變。
-        <br><b>kako</b>：主格代名詞「我」。
-        <br><b>a</b>：連綴詞，連接主要動詞與次要動作。
-        <br><b>minokay</b>：動詞，由詞根 nokay 加 mi- 綴構成。"""
+        <br><b>O ... kami</b>：名詞句結構「我們是...」。
+        <br><b>mafoloday</b>：詞根 <i>folod</i> (群) + <i>ma-</i> (狀態) + <i>-ay</i> (名詞化)。
+        <br><b>kakonah</b>：核心名詞「螞蟻」。
+        <br><b>kami</b>：主格代名詞「我們」(排除式，不包含聽話者)。"""
     },
     {
-        "amis": "O maan ko kaolahan iso?", 
-        "zh": "你想要/喜歡什麼？", 
+        "amis": "Malalok matayal kami.", 
+        "zh": "我們勤勞地工作。", 
         "note": """
-        <br><b>O maan</b>：疑問句首，意為「是什麼」。
-        <br><b>ko</b>：主格標記，引導全句主語。
-        <br><b>kaolahan</b>：由詞根 olah (喜愛) 加上環綴 ka...an 構成的名詞化動詞，指「所喜愛的事物」。
-        <br><b>iso</b>：屬格代名詞「你的」。"""
+        <br><b>Malalok</b>：動詞「勤勞」，在此作副詞修飾後面的動作。
+        <br><b>matayal</b>：動詞「工作」。
+        <br><b>連動結構</b>：兩個動詞連用，表示「勤勞地做工作」。"""
     },
     {
-        "amis": "Hay, ira i parad ko konga, alaen.", 
-        "zh": "好，地瓜在桌子上，去拿吧。", 
+        "amis": "O matefaday i sasera a posak ato fao i.", 
+        "zh": "那些掉在地面上的飯粒和蟲子...", 
         "note": """
-        <br><b>Hay</b>：肯定感嘆詞「是/好」。
-        <br><b>i parad</b>：介系詞結構，i (在) + parad (桌子/長凳)。
-        <br><b>alaen</b>：詞根 ala (拿) + 受事焦點後綴 -en，在祈使語境下表示「(地瓜)要被拿/去拿吧」。"""
+        <br><b>matefaday</b>：掉下來的東西 (名詞化動詞)。
+        <br><b>i sasera</b>：在地面 (方位介系詞片語)。
+        <br><b>posak ato fao</b>：飯粒和蟲子。
+        <br><b>句尾 i</b>：話題標記 (Topic Marker)，表示「關於這些東西...」，句子未完，引起注意。"""
+    },
+    {
+        "amis": "Liliden niyam a panokay.", 
+        "zh": "我們都把它們搬回家。", 
+        "note": """
+        <br><b>Liliden</b>：被搬運 (PF 受事焦點)。詞根 <i>lilid</i> + <i>-en</i>。
+        <br><b>niyam</b>：我們 (屬格)。因為動詞是被動態，執行者用屬格。
+        <br><b>panokay</b>：使...回家 (使動 <i>pa-</i> + <i>nokay</i>)。
+        <br><b>邏輯</b>：(那些東西) 被我們搬運並帶回家。"""
+    },
+    {
+        "amis": "O malalokay a kakonah kami.", 
+        "zh": "我們是勤勞的螞蟻。", 
+        "note": """
+        <br><b>malalokay</b>：勤勞的 (形容詞名詞化)。
+        <br><b>首尾呼應</b>：與第一句結構相同，再次強調身份。"""
     }
 ]
 
 STORY_DATA = [
-    {"amis": "Ina, ira to kako a minokay.", "zh": "媽媽，我回來了。"},
-    {"amis": "A! Ira to kiso a minokay!", "zh": "阿！你回來了！"},
-    {"amis": "Macahiw kako.", "zh": "我肚子餓了。"},
-    {"amis": "O maan ko kaolahan iso?", "zh": "你想要吃什麼？"},
-    {"amis": "Mangalay kako a komaen to konga.", "zh": "我想要吃地瓜。"},
-    {"amis": "Hay, ira i parad ko konga, alaen.", "zh": "好，地瓜在桌子上，去拿吧。"}
+    {"amis": "O mafoloday a kakonah kami.", "zh": "我們是一群螞蟻。"},
+    {"amis": "Malalok matayal kami.", "zh": "我們勤勞地工作。"},
+    {"amis": "O matefaday i sasera a posak ato fao i.", "zh": "掉在地面上的飯粒和蟲子。"},
+    {"amis": "Liliden niyam a panokay.", "zh": "我們都把它們搬回家。"},
+    {"amis": "O malalokay a kakonah kami.", "zh": "我們是勤勞的螞蟻。"}
 ]
 
-# --- 2. 視覺系統 (CSS 注入) ---
+# --- 2. 視覺系統 (CSS 注入 - Cyberpunk Style) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
     .stApp { background-color: #0a0e05; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; }
-    .header-container { background: rgba(0, 20, 0, 0.8); border: 2px solid #39FF14; box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 30px; }
-    .main-title { font-family: 'Orbitron', sans-serif; color: #39FF14; font-size: 40px; text-shadow: 0 0 10px #39FF14; }
+    
+    /* 霓虹綠邊框容器 */
+    .header-container { 
+        background: rgba(0, 20, 0, 0.8); 
+        border: 2px solid #39FF14; 
+        box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); 
+        border-radius: 10px; 
+        padding: 20px; 
+        text-align: center; 
+        margin-bottom: 30px; 
+    }
+    
+    .main-title { font-family: 'Orbitron', sans-serif; color: #39FF14; font-size: 36px; text-shadow: 0 0 10px #39FF14; margin-bottom: 5px; }
+    .sub-title { color: #FFF; font-size: 14px; letter-spacing: 2px; opacity: 0.8; }
+    
+    /* Tab 樣式客製化 */
     .stTabs [data-baseweb="tab"] { color: #FFFFFF !important; background-color: rgba(255, 255, 255, 0.05); }
     .stTabs [aria-selected="true"] { border: 1px solid #39FF14; color: #39FF14 !important; font-weight: bold; }
-    .stButton>button { border: 1px solid #39FF14 !important; background: transparent !important; color: #39FF14 !important; width: 100%; border-radius: 5px; }
-    .stButton>button:hover { background: #39FF14 !important; color: #000 !important; }
     
+    /* 按鈕樣式 */
+    .stButton>button { border: 1px solid #39FF14 !important; background: transparent !important; color: #39FF14 !important; width: 100%; border-radius: 5px; transition: 0.3s; }
+    .stButton>button:hover { background: #39FF14 !important; color: #000 !important; box-shadow: 0 0 15px #39FF14; }
+    
+    /* 測驗卡片 */
     .quiz-card { background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
     .quiz-tag { background: #39FF14; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-right: 10px; }
     
+    /* 翻譯區塊 */
     .zh-translation-block {
         background: rgba(20, 20, 20, 0.6);
         border-left: 4px solid #AAA;
@@ -98,7 +138,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 核心技術：沙盒渲染引擎 (v9.0) ---
+# --- 3. 核心技術：沙盒渲染引擎 (v9.1 - Optimized) ---
 def get_html_card(item, type="word"):
     # 設定：full_amis_block 依然保持 100px padding (防切頭)，下方負邊距拉近
     pt = "100px" if type == "full_amis_block" else "80px"
@@ -108,7 +148,7 @@ def get_html_card(item, type="word"):
         body {{ background-color: transparent; color: #ECF0F1; font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 5px; padding-top: {pt}; overflow-x: hidden; }}
         
         .interactive-word {{ position: relative; display: inline-block; border-bottom: 1px dashed #39FF14; cursor: pointer; margin: 0 3px; color: #EEE; transition: 0.3s; font-size: 19px; }}
-        .interactive-word .tooltip-text {{ visibility: hidden; min-width: 60px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; }}
+        .interactive-word .tooltip-text {{ visibility: hidden; min-width: 80px; background-color: #000; color: #39FF14; text-align: center; border: 1px solid #39FF14; border-radius: 6px; padding: 5px; position: absolute; z-index: 100; bottom: 135%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 14px; white-space: nowrap; box-shadow: 0 0 10px rgba(57,255,20,0.2); }}
         .interactive-word:hover .tooltip-text {{ visibility: visible; opacity: 1; }}
         
         .play-btn-inline {{ background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; margin-left: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.3s; vertical-align: middle; }}
@@ -116,10 +156,11 @@ def get_html_card(item, type="word"):
         
         /* 單字卡樣式 */
         .word-card-static {{ background: rgba(20, 30, 20, 0.9); border: 1px solid #39FF14; border-left: 5px solid #39FF14; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; margin-top: {mt}; height: 100px; box-sizing: border-box; }}
-        .wc-root-tag {{ font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; }}
+        .wc-root-tag {{ font-size: 12px; background: #39FF14; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-right: 5px; }}
         .wc-amis {{ color: #39FF14; font-size: 24px; font-weight: bold; margin: 5px 0; }}
         .wc-zh {{ color: #FFF; font-size: 16px; font-weight: bold; }}
-        .play-btn-large {{ background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; }}
+        .play-btn-large {{ background: transparent; border: 1px solid #39FF14; color: #39FF14; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; font-size: 20px; transition: 0.2s; }}
+        .play-btn-large:hover {{ background: #39FF14; color: #000; }}
         
         /* 阿美語全文區塊樣式 */
         .amis-full-block {{ line-height: 2.2; font-size: 18px; margin-top: {mt}; }}
@@ -144,7 +185,7 @@ def get_html_card(item, type="word"):
         </div>"""
 
     elif type == "full_amis_block": 
-        # 互動課文區塊：產生帶發音與翻譯的單字 Span
+        # 互動課文區塊
         all_sentences_html = []
         for sentence_data in item:
             s_amis = sentence_data['amis']
@@ -215,11 +256,10 @@ def generate_quiz():
     random.shuffle(q3_opts)
     questions.append({"type": "trans_a2z", "tag": "🔄 阿翻中", "text": f"單字 <span style='color:#39FF14'>{q3['amis']}</span> 的意思是？", "correct": q3['zh'], "options": q3_opts})
 
-    # 4. 詞根偵探
+    # 4. 詞根偵探 (Root Logic)
     q4 = random.choice(VOCABULARY)
     other_roots = list(set([v['root'] for v in VOCABULARY if v['root'] != q4['root']]))
-    # 安全檢查：如果詞根不夠，補一些假詞根
-    if len(other_roots) < 2: other_roots += ["roma", "lalan", "cidal"]
+    if len(other_roots) < 2: other_roots += ["roma", "lalan", "cidal"] # Fallback
     q4_opts = [q4['root']] + random.sample(other_roots, 2)
     random.shuffle(q4_opts)
     questions.append({"type": "root", "tag": "🧬 詞根偵探", "text": f"單字 <span style='color:#39FF14'>{q4['amis']}</span> 的詞根是？", "correct": q4['root'], "options": q4_opts, "note": f"詞根意思：{q4['root_zh']}"})
@@ -234,10 +274,9 @@ def generate_quiz():
     random.shuffle(q6_opts)
     questions.append({"type": "sent_trans", "tag": "📝 句型翻譯", "text": f"請選擇中文「<span style='color:#39FF14'>{q6['zh']}</span>」對應的阿美語", "correct": q6['amis'], "options": q6_opts})
 
-    # 7. 克漏字 (修正：精準挖空邏輯)
+    # 7. 克漏字 (Cloze)
     q7 = random.choice(STORY_DATA)
     words = q7['amis'].split()
-    # 找出所有在字典裡的字 (忽略標點)
     valid_indices = []
     for i, w in enumerate(words):
         clean_w = re.sub(r"[^\w']", "", w).lower()
@@ -246,30 +285,24 @@ def generate_quiz():
     
     if valid_indices:
         target_idx = random.choice(valid_indices)
-        target_raw = words[target_idx] # 例如 "Ina,"
-        target_clean = re.sub(r"[^\w']", "", target_raw).lower() # "ina"
+        target_raw = words[target_idx]
+        target_clean = re.sub(r"[^\w']", "", target_raw).lower()
         
-        # 顯示題目：把那個字挖掉
         words_display = words[:]
         words_display[target_idx] = "______"
         q_text = " ".join(words_display)
         
-        # 選項：必須是乾淨的單字，不帶標點
-        correct_ans = target_clean # 正確答案存為 "ina" (乾淨版)
-        
-        # 干擾項
-        distractors = [k for k in VOCAB_MAP.keys() if k != correct_ans]
-        if len(distractors) < 2: distractors += ["kako", "ira"] # Fallback
+        correct_ans = target_clean
+        distractors = [k for k in VOCAB_MAP.keys() if k != correct_ans and len(k) > 2] # 避免選到太短的干擾項
+        if len(distractors) < 2: distractors += ["kako", "ira"]
         opts = [correct_ans] + random.sample(distractors, 2)
         random.shuffle(opts)
         
         questions.append({"type": "cloze", "tag": "🕳️ 文法克漏字", "text": f"請填空：<br><span style='color:#FFF; font-size:18px;'>{q_text}</span><br><span style='color:#BBB; font-size:14px;'>{q7['zh']}</span>", "correct": correct_ans, "options": opts})
-    
     else:
-        # 如果句子太短沒字可挖，回退到聽力題
         questions.append(questions[0]) 
 
-    # 8. 補一題 (隨機)
+    # 8. 補一題
     questions.append(random.choice(questions[:4])) 
 
     random.shuffle(questions)
@@ -277,69 +310,17 @@ def generate_quiz():
 
 def play_audio_backend(text):
     try:
+        # 使用印尼語 (id) 近似阿美語發音
         tts = gTTS(text=text, lang='id'); fp = BytesIO(); tts.write_to_fp(fp); st.audio(fp, format='audio/mp3')
     except: pass
 
 # --- 5. UI 呈現層 ---
-st.markdown("""<div class="header-container"><h1 class="main-title">Ira to kako a minokay</h1><div style="color: #39FF14; letter-spacing: 5px;">第 1 課：我回來了</div><div style="font-size: 12px; margin-top:10px; color:#888;">講師：高生榮 | 教材：高生榮</div></div>""", unsafe_allow_html=True)
+st.markdown("""
+<div class="header-container">
+    <h1 class="main-title">O kakonah</h1>
+    <div class="sub-title">第 1 課：螞蟻之歌</div>
+    <div style="font-size: 12px; margin-top:10px; color:#888;">Code-CRF v6.4 | EdTech Engine Loaded</div>
+</div>
+""", unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4 = st.tabs(["🐜 互動課文", "📖 核心單字", "🧬 句型解析", "⚔️ 實戰測驗"])
-
-with tab1:
-    st.markdown("### // 文章閱讀")
-    st.caption("👆 上方為阿美語(可點擊查義/發音)，下方為對應中文翻譯")
-    
-    st.markdown("""<div style="background:rgba(20,20,20,0.6); padding:10px; border-left:4px solid #39FF14; border-radius:5px 5px 0 0;">""", unsafe_allow_html=True)
-    components.html(get_html_card(STORY_DATA, type="full_amis_block"), height=400, scrolling=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    zh_content = "<br>".join([item['zh'] for item in STORY_DATA])
-    st.markdown(f"""
-    <div class="zh-translation-block">
-        {zh_content}
-    </div>
-    """, unsafe_allow_html=True)
-
-with tab2:
-    st.markdown("### // 單字練習")
-    for v in VOCABULARY:
-        components.html(get_html_card(v, type="word"), height=150)
-
-with tab3:
-    st.markdown("### // 句型分析")
-    for s in SENTENCES:
-        st.markdown("""<div style="background:rgba(57,255,20,0.05); padding:15px; border:1px dashed #39FF14; border-radius: 5px; margin-bottom:15px;">""", unsafe_allow_html=True)
-        components.html(get_html_card(s, type="sentence"), height=160)
-        st.markdown(f"""
-        <div style="color:#FFF; font-size:16px; margin-bottom:10px; border-top:1px solid #333; padding-top:10px;">{s['zh']}</div>
-        <div style="color:#CCC; font-size:14px; line-height:1.8; border-top:1px dashed #555; padding-top:5px;"><span style="color:#39FF14; font-family:Orbitron; font-weight:bold;">ANALYSIS:</span> {s.get('note', '')}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-with tab4:
-    if 'quiz_questions' not in st.session_state:
-        st.session_state.quiz_questions = generate_quiz()
-        st.session_state.quiz_step = 0; st.session_state.quiz_score = 0
-    if st.session_state.quiz_step < len(st.session_state.quiz_questions):
-        q = st.session_state.quiz_questions[st.session_state.quiz_step]
-        st.markdown(f"""<div class="quiz-card"><div style="margin-bottom:10px;"><span class="quiz-tag">{q['tag']}</span> <span style="color:#888;">Q{st.session_state.quiz_step + 1}</span></div><div style="font-size:18px; color:#FFF; margin-bottom:10px;">{q['text']}</div></div>""", unsafe_allow_html=True)
-        if 'audio' in q: play_audio_backend(q['audio'])
-        opts = q['options']; cols = st.columns(min(len(opts), 3))
-        for i, opt in enumerate(opts):
-            with cols[i % 3]:
-                if st.button(opt, key=f"q_{st.session_state.quiz_step}_{i}"):
-                    # 判斷邏輯：統一轉小寫比對 (避免 Ina vs ina 問題)
-                    if opt.lower() == q['correct'].lower():
-                        st.success("通過 (Access Granted)"); st.session_state.quiz_score += 1
-                    else:
-                        st.error(f"錯誤 - 正解: {q['correct']}"); 
-                        if 'note' in q: st.info(q['note'])
-                    time.sleep(1.5); st.session_state.quiz_step += 1; st.rerun()
-    else:
-        st.markdown(f"""<div style="text-align:center; padding:30px; border:2px solid #39FF14; background:rgba(57,255,20,0.1);"><h2 style="color:#39FF14">MISSION COMPLETE</h2><p>得分: {st.session_state.quiz_score} / {len(st.session_state.quiz_questions)}</p></div>""", unsafe_allow_html=True)
-        if st.button("重新啟動系統 (Reboot)"): del st.session_state.quiz_questions; st.rerun()
-
-st.markdown("---")
-st.caption("協作單位：桃園市阿美族三一教育文化協會")
-
-
+tab1, tab2, tab3, tab4 = st.tabs(["🐝 互動課文", "📕 核心單字", "🧬 
